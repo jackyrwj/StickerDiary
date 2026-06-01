@@ -1,0 +1,290 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA000001 /* MilkTeaStickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* MilkTeaStickerApp.swift */; };
+		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* ContentView.swift */; };
+		AA000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100003 /* Assets.xcassets */; };
+		BB000001 /* StickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001 /* StickerStore.swift */; };
+		CC000001 /* MilkTeaStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100034 /* MilkTeaStickerView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AA100001 /* MilkTeaStickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerApp.swift; sourceTree = "<group>"; };
+		AA100002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA100003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA100034 /* MilkTeaStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerView.swift; sourceTree = "<group>"; };
+		AA200001 /* MilkTeaSticker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MilkTeaSticker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB100001 /* StickerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerStore.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA300001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AA400001 = {
+			isa = PBXGroup;
+			children = (
+				AA400002 /* MilkTeaSticker */,
+				AA400003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA400002 /* MilkTeaSticker */ = {
+			isa = PBXGroup;
+			children = (
+				AA100001 /* MilkTeaStickerApp.swift */,
+				AA100002 /* ContentView.swift */,
+				AA100034 /* MilkTeaStickerView.swift */,
+				BB100001 /* StickerStore.swift */,
+				AA100003 /* Assets.xcassets */,
+			);
+			path = MilkTeaSticker;
+			sourceTree = "<group>";
+		};
+		AA400003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA200001 /* MilkTeaSticker.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA500001 /* MilkTeaSticker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA700001 /* Build configuration list for PBXNativeTarget "MilkTeaSticker" */;
+			buildPhases = (
+				AA600001 /* Sources */,
+				AA300001 /* Frameworks */,
+				AA600002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MilkTeaSticker;
+			packageProductDependencies = (
+			);
+			productName = MilkTeaSticker;
+			productReference = AA200001 /* MilkTeaSticker.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA900001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					AA500001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = AA700002 /* Build configuration list for PBXProject "MilkTeaSticker" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AA400001;
+			packageReferences = (
+			);
+			productRefGroup = AA400003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA500001 /* MilkTeaSticker */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA600002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000003 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA600001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000001 /* MilkTeaStickerApp.swift in Sources */,
+				AA000002 /* ContentView.swift in Sources */,
+				BB000001 /* StickerStore.swift in Sources */,
+				CC000001 /* MilkTeaStickerView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AA800001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AA800002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AA800003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "奶茶贴纸";
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄奶茶照片并制作白边贴纸。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "用于让纸袋里的贴纸根据手机倾斜自然滑动。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
+				PRODUCT_NAME = MilkTeaSticker;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA800004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "奶茶贴纸";
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄奶茶照片并制作白边贴纸。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "用于让纸袋里的贴纸根据手机倾斜自然滑动。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
+				PRODUCT_NAME = MilkTeaSticker;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA700001 /* Build configuration list for PBXNativeTarget "MilkTeaSticker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA800003 /* Debug */,
+				AA800004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA700002 /* Build configuration list for PBXProject "MilkTeaSticker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA800001 /* Debug */,
+				AA800002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA900001 /* Project object */;
+}
