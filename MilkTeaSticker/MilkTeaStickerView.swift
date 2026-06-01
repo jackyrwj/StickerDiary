@@ -8227,7 +8227,7 @@ private struct ContactUsPage: View {
     private let mutedInk = Color(red: 0.56, green: 0.56, blue: 0.58)
     private let cardBg = Color(red: 0.96, green: 0.96, blue: 0.97)
     private let accent = Color(red: 0.95, green: 0.65, blue: 0.12)
-    private let email = "milkteaStickerApp@gmail.com"
+    private let email = "raowenjieszu@gmail.com"
 
     var body: some View {
         ZStack {
