@@ -8335,12 +8335,8 @@ private struct ContactUsPage: View {
 
     private var xiaohongshuRow: some View {
         Button {
-            if let url = URL(string: "xhsdiscover://") {
-                if UIApplication.shared.canOpenURL(url) {
-                    UIApplication.shared.open(url)
-                } else if let webUrl = URL(string: "https://www.xiaohongshu.com") {
-                    UIApplication.shared.open(webUrl)
-                }
+            if let url = URL(string: "https://www.xiaohongshu.com/user/profile/608e5e7500000000010050c2") {
+                UIApplication.shared.open(url)
             }
         } label: {
             HStack(spacing: 14) {
