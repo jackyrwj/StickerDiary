@@ -1681,8 +1681,8 @@ private struct StickerHomeView: View {
         let stickers = selectedDateStickers
         let count = selectedDateCount
         let hasStickers = count > 0
-        let cardHeight: CGFloat = compact ? 166 : 178
-        let previewHeight: CGFloat = compact ? 66 : 76
+        let cardHeight: CGFloat = compact ? 154 : 166
+        let previewHeight: CGFloat = compact ? 62 : 70
         let emptyBagSize: CGFloat = compact ? 78 : 88
         let titleSize: CGFloat = compact ? 20 : 21
 
@@ -1697,7 +1697,7 @@ private struct StickerHomeView: View {
                 )
                 .frame(height: cardHeight)
 
-            VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+            VStack(alignment: .leading, spacing: compact ? 6 : 8) {
                 if hasStickers {
                     heroStickerStrip(stickers: stickers, compact: compact)
                         .frame(height: previewHeight)
@@ -1741,9 +1741,9 @@ private struct StickerHomeView: View {
                 }
                 .frame(height: 44)
             }
-            .padding(.top, compact ? 12 : 14)
+            .padding(.top, compact ? 8 : 10)
             .padding(.horizontal, 26)
-            .padding(.bottom, compact ? 14 : 16)
+            .padding(.bottom, compact ? 10 : 12)
             .frame(height: cardHeight)
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -1765,40 +1765,47 @@ private struct StickerHomeView: View {
 
     private func heroStickerStrip(stickers: [(entry: StickerEntry, image: UIImage)], compact: Bool) -> some View {
         let stickerSize: CGFloat = compact ? 64 : 72
+        let addSize = stickerSize * 0.82
 
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                Button {
-                    onCapture(selectedDate)
-                } label: {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.45), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
-                        .frame(width: stickerSize * 0.82, height: stickerSize * 0.82)
-                        .overlay {
-                            Image(systemName: "plus")
-                                .font(.system(size: 22, weight: .semibold))
-                                .foregroundStyle(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.6))
+        return ZStack(alignment: .leading) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Color.clear
+                        .frame(width: addSize + 12, height: stickerSize)
+
+                    ForEach(Array(stickers.enumerated()), id: \.element.entry.id) { index, item in
+                        Button {
+                            onStickerPreview(stickers, item.entry.id)
+                        } label: {
+                            Image(uiImage: item.image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: stickerSize, height: stickerSize)
+                                .rotationEffect(.degrees(heroStickerRotation(index: index)))
+                                .shadow(color: .black.opacity(0.12), radius: 10, y: 6)
                         }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("添加贴纸")
-
-                ForEach(Array(stickers.enumerated()), id: \.element.entry.id) { index, item in
-                    Button {
-                        onStickerPreview(stickers, item.entry.id)
-                    } label: {
-                        Image(uiImage: item.image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: stickerSize, height: stickerSize)
-                            .rotationEffect(.degrees(heroStickerRotation(index: index)))
-                            .shadow(color: .black.opacity(0.12), radius: 10, y: 6)
+                        .buttonStyle(HomeCardButtonStyle())
+                        .accessibilityLabel("预览贴纸")
                     }
-                    .buttonStyle(HomeCardButtonStyle())
-                    .accessibilityLabel("预览贴纸")
                 }
+                .padding(.trailing, 26)
             }
-            .padding(.trailing, 26)
+
+            Button {
+                onCapture(selectedDate)
+            } label: {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.45), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    .frame(width: addSize, height: addSize)
+                    .overlay {
+                        Image(systemName: "plus")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.6))
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("添加贴纸")
+            .zIndex(2)
         }
     }
 
@@ -3688,12 +3695,6 @@ private struct StickerLibraryPage: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 26) {
-                            header
-                                .padding(.top, 56)
-                                .opacity(1 - stickyHeaderProgress)
-                                .scaleEffect(1 - stickyHeaderProgress * 0.035, anchor: .topLeading)
-                                .offset(y: -stickyHeaderProgress * 14)
-
                             if groups.isEmpty {
                                 emptyState
                                     .frame(maxWidth: .infinity)
@@ -3726,6 +3727,7 @@ private struct StickerLibraryPage: View {
                             }
                         }
                         .padding(.horizontal, 24)
+                        .padding(.top, fixedHeaderHeight(safeTop: geo.safeAreaInsets.top))
                         .padding(.bottom, isImporting ? 118 : 56)
                         .background(
                             GeometryReader { scrollGeo in
@@ -3748,10 +3750,7 @@ private struct StickerLibraryPage: View {
                     importBar
                 }
 
-                stickyHeader(safeTop: geo.safeAreaInsets.top)
-                    .opacity(stickyHeaderProgress)
-                    .offset(y: -14 * (1 - stickyHeaderProgress))
-                    .allowsHitTesting(stickyHeaderProgress > 0.6)
+                fixedHeader(safeTop: geo.safeAreaInsets.top)
                     .zIndex(8)
 
                 // Tap outside sticker to cancel delete mode
@@ -3818,10 +3817,44 @@ private struct StickerLibraryPage: View {
         }
     }
 
+    private func fixedHeaderHeight(safeTop: CGFloat) -> CGFloat {
+        safeTop + 162
+    }
+
     private var stickyHeaderProgress: CGFloat {
         let start: CGFloat = 14
         let distance: CGFloat = 54
         return min(1, max(0, (-libraryScrollOffset - start) / distance))
+    }
+
+    private func fixedHeader(safeTop: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            header
+                .padding(.horizontal, 24)
+                .padding(.top, safeTop + 52)
+                .padding(.bottom, 26)
+                .background(
+                    Color(red: 0.92, green: 0.90, blue: 0.86)
+                        .opacity(0.96)
+                        .overlay(.ultraThinMaterial.opacity(0.32))
+                )
+                .overlay(alignment: .bottom) {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.92, green: 0.90, blue: 0.86).opacity(0.16),
+                            Color(red: 0.92, green: 0.90, blue: 0.86).opacity(0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 18)
+                    .offset(y: 18)
+                    .allowsHitTesting(false)
+                }
+
+            Spacer()
+        }
+        .ignoresSafeArea(edges: .top)
     }
 
     private func stickyHeader(safeTop: CGFloat) -> some View {
