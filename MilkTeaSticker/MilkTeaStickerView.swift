@@ -1409,16 +1409,16 @@ private enum AchievementSystem {
     static let waitingTier = AchievementTier(
         threshold: 0,
         title: "等待第一篇日记",
-        condition: "生成或保存本月第一篇日记。"
+        condition: "本月生成第一篇日记。"
     )
 
     static let tiers: [AchievementTier] = [
-        AchievementTier(threshold: 1, title: "第一篇日记", condition: "本月生成或保存 1 篇日记。", imageName: "AchieveTier1"),
-        AchievementTier(threshold: 3, title: "记录起步", condition: "本月生成或保存 3 篇日记。", imageName: "AchieveTier2"),
-        AchievementTier(threshold: 7, title: "一周记录者", condition: "本月生成或保存 7 篇日记。", imageName: "AchieveTier3"),
-        AchievementTier(threshold: 14, title: "半月采集家", condition: "本月生成或保存 14 篇日记。", imageName: "AchieveTier4"),
-        AchievementTier(threshold: 25, title: "生活记录家", condition: "本月生成或保存 25 篇日记。", imageName: "AchieveTier5"),
-        AchievementTier(threshold: 30, title: "满月收藏馆", condition: "本月生成或保存 30 篇日记。", imageName: "AchieveTier6")
+        AchievementTier(threshold: 1, title: "第一篇日记", condition: "本月生成 1 篇日记。", imageName: "AchieveTier1"),
+        AchievementTier(threshold: 3, title: "记录起步", condition: "本月生成 3 篇日记。", imageName: "AchieveTier2"),
+        AchievementTier(threshold: 7, title: "一周记录者", condition: "本月生成 7 篇日记。", imageName: "AchieveTier3"),
+        AchievementTier(threshold: 14, title: "半月采集家", condition: "本月生成 14 篇日记。", imageName: "AchieveTier4"),
+        AchievementTier(threshold: 25, title: "生活记录家", condition: "本月生成 25 篇日记。", imageName: "AchieveTier5"),
+        AchievementTier(threshold: 30, title: "满月收藏馆", condition: "本月生成 30 篇日记。", imageName: "AchieveTier6")
     ]
 
     static func status(diaryCount: Int, dayCount: Int, representativeSticker: UIImage?) -> AchievementStatus {
@@ -1460,6 +1460,35 @@ private enum AchievementSystem {
     static func currentMonthProductionDayCount(records: [StickerCalendarRecord] = [], date: Date = .now) -> Int {
         currentMonthDiaryCount(records: records, date: date)
     }
+
+    static func monthArchives(records: [StickerCalendarRecord], through endDate: Date = .now) -> [AchievementMonthArchive] {
+        let calendar = Calendar.current
+        let diaryRecords = records.filter { !$0.diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard let firstDate = diaryRecords.map(\.date).min() else { return [] }
+
+        var month = calendar.date(from: calendar.dateComponents([.year, .month], from: firstDate)) ?? calendar.startOfDay(for: firstDate)
+        let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: endDate)) ?? calendar.startOfDay(for: endDate)
+        var archives: [AchievementMonthArchive] = []
+
+        while month <= endMonth {
+            archives.append(
+                AchievementMonthArchive(
+                    month: month,
+                    count: currentMonthDiaryCount(records: records, date: month)
+                )
+            )
+            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: month) else { break }
+            month = nextMonth
+        }
+
+        return archives
+    }
+}
+
+private struct AchievementMonthArchive: Identifiable {
+    var id: Date { month }
+    let month: Date
+    let count: Int
 }
 
 private struct StickerHomeView: View {
@@ -1531,7 +1560,7 @@ private struct StickerHomeView: View {
             let actionsBottom = compact ? 14.0 : 16.0
 
             ZStack {
-                paper.ignoresSafeArea()
+                PaperTextureBackground()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
@@ -1568,6 +1597,7 @@ private struct StickerHomeView: View {
                 if showAchievements {
                     AchievementListPage(
                         status: achievementStatus,
+                        records: records,
                         onClose: {
                             withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
                                 showAchievements = false
@@ -2173,168 +2203,251 @@ private struct HomeActionCard: View {
 
 private struct AchievementListPage: View {
     let status: AchievementStatus
+    let records: [StickerCalendarRecord]
     let onClose: () -> Void
 
     private let paper = Color(red: 0.97, green: 0.95, blue: 0.92)
     private let ink = Color(red: 0.22, green: 0.15, blue: 0.12)
     private let mutedInk = Color(red: 0.52, green: 0.46, blue: 0.42)
+    private let stampRed = Color(red: 0.60, green: 0.18, blue: 0.13)
+    private let stampGold = Color(red: 0.75, green: 0.46, blue: 0.20)
+    private let lockedInk = Color(red: 0.70, green: 0.67, blue: 0.62)
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 22),
+        GridItem(.flexible(), spacing: 22)
+    ]
+
+    private var monthArchives: [AchievementMonthArchive] {
+        AchievementSystem.monthArchives(records: records)
+    }
 
     var body: some View {
-        ZStack {
-            paper.ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    StickerPageHeader(
-                        title: "成就",
-                        subtitle: "全部收集进度",
-                        closeSystemImage: "xmark",
-                        onClose: onClose
-                    ) {
-                        EmptyView()
-                    }
-                    .padding(.top, 54)
-
-                    achievementHero
-
-                    VStack(spacing: 12) {
-                        ForEach(AchievementSystem.tiers) { tier in
-                            achievementRow(tier)
-                        }
-                    }
-                    .padding(.bottom, 40)
-                }
-                .padding(.horizontal, 20)
-            }
-        }
-    }
-
-    private var achievementHero: some View {
-        HStack(spacing: 16) {
+        GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(red: 0.92, green: 0.87, blue: 0.79))
-                    .frame(width: 108, height: 108)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(.white.opacity(0.68), lineWidth: 1.5)
-                    }
+                AchievementPaperBackground()
 
-                if let imgName = status.currentTier.imageName {
-                    Image(imgName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 86, height: 86)
-                        .rotationEffect(.degrees(-6))
-                        .shadow(color: .black.opacity(0.14), radius: 8, y: 5)
-                } else {
-                    Image(systemName: "pencil.and.scribble")
-                        .font(.system(size: 44, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.6))
-                }
-            }
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        header(safeTop: geo.safeAreaInsets.top)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(status.diaryCount == 0 ? "开始记录吧" : status.currentTier.title)
-                    .font(.system(size: 26, weight: .black, design: .rounded))
-                    .foregroundStyle(status.diaryCount == 0 ? mutedInk.opacity(0.7) : ink)
-                    .lineLimit(2)
+                        LazyVGrid(columns: columns, alignment: .center, spacing: 34) {
+                            ForEach(AchievementSystem.tiers) { tier in
+                                achievementStamp(tier)
+                            }
+                        }
+                        .padding(.horizontal, 28)
+                        .padding(.top, 42)
 
-                Text(status.diaryCount == 0 ? "写下第一篇日记，解锁你的成就" : "本月 \(status.diaryCount) 篇日记 · 上限 \(AchievementSystem.monthlyCap) 篇")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(mutedInk.opacity(0.78))
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(red: 0.86, green: 0.82, blue: 0.75))
-                        Capsule()
-                            .fill(Color(red: 0.73, green: 0.43, blue: 0.17))
-                            .frame(width: geo.size.width * status.progress)
+                        monthArchiveSection
+                            .padding(.top, 34)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, max(geo.safeAreaInsets.bottom + 18, 32))
                     }
                 }
-                .frame(height: 9)
 
-                Text(status.diaryCount >= AchievementSystem.monthlyCap ? "本月已封顶" : "下一阶段 \(status.nextThreshold) 篇")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.73, green: 0.43, blue: 0.17))
+                closeButton(safeTop: geo.safeAreaInsets.top)
             }
         }
-        .padding(20)
-        .background(.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+        .gesture(
+            DragGesture(minimumDistance: 24, coordinateSpace: .local)
+                .onEnded { value in
+                    if value.translation.width > 90 && abs(value.translation.height) < 80 {
+                        onClose()
+                    }
+                }
+        )
+    }
+
+    private func header(safeTop: CGFloat) -> some View {
+        VStack(spacing: 14) {
+            Text("日记成就")
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+                .frame(maxWidth: .infinity)
+                .padding(.top, safeTop + 54)
+
+            Text(status.diaryCount == 0 ? "写下第一篇日记，盖下第一枚成就章" : "本月已完成 \(status.diaryCount)/\(AchievementSystem.monthlyCap) 篇日记")
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(mutedInk.opacity(0.72))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 28)
+    }
+
+    private func closeButton(safeTop: CGFloat) -> some View {
+        VStack {
+            HStack {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundStyle(mutedInk)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.58), in: Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.74), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("关闭日记成就")
+
+                Spacer()
+            }
+            .padding(.leading, 22)
+            .padding(.top, safeTop + 18)
+
+            Spacer()
         }
     }
 
-    private func achievementRow(_ tier: AchievementTier) -> some View {
+    private func achievementStamp(_ tier: AchievementTier) -> some View {
         let isUnlocked = status.diaryCount >= tier.threshold
         let progress = status.progress(to: tier)
-        let accent = Color(red: 0.73, green: 0.43, blue: 0.17)
-        let lockedTone = Color(red: 0.66, green: 0.63, blue: 0.59)
+        let titleColor = isUnlocked ? stampRed : lockedInk.opacity(0.42)
+        let bodyColor = isUnlocked ? mutedInk.opacity(0.78) : lockedInk.opacity(0.54)
 
-        return HStack(spacing: 14) {
+        return VStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .fill(isUnlocked ? Color(red: 0.92, green: 0.76, blue: 0.51) : Color(red: 0.84, green: 0.82, blue: 0.78))
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 15, style: .continuous)
-                            .stroke(isUnlocked ? .white.opacity(0.72) : .white.opacity(0.48), lineWidth: 1)
-                    }
-                    .shadow(color: isUnlocked ? accent.opacity(0.16) : .clear, radius: 8, y: 4)
-
                 if let imgName = tier.imageName {
                     Image(imgName)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 40, height: 40)
+                        .frame(width: 96, height: 96)
                         .saturation(isUnlocked ? 1 : 0)
-                        .opacity(isUnlocked ? 1 : 0.45)
+                        .opacity(isUnlocked ? 1 : 0.24)
+                        .rotationEffect(.degrees(isUnlocked ? -4 : 0))
+                        .shadow(color: isUnlocked ? stampGold.opacity(0.24) : .clear, radius: 10, y: 6)
+                        .offset(y: -10)
                 } else {
-                    Image(systemName: "seal.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(isUnlocked ? Color(red: 0.73, green: 0.43, blue: 0.17) : lockedTone)
-                        .opacity(isUnlocked ? 1 : 0.5)
+                    Image(systemName: "seal")
+                        .font(.system(size: 64, weight: .semibold))
+                        .foregroundStyle(titleColor)
+                        .offset(y: -10)
                 }
-            }
 
-            VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text(tier.title)
-                        .font(.system(size: 16, weight: .black, design: .rounded))
-                        .foregroundStyle(isUnlocked ? ink : lockedTone)
-
+                VStack(spacing: 0) {
                     Spacer()
 
+                    Text(tier.title)
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundStyle(titleColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+            }
+            .frame(width: 146, height: 136)
+            .background {
+                Circle()
+                    .fill(isUnlocked ? Color.white.opacity(0.12) : lockedInk.opacity(0.035))
+                    .blur(radius: 0.5)
+            }
+
+            VStack(spacing: 5) {
+                Text(tier.condition.replacingOccurrences(of: "。", with: ""))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(bodyColor)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(minHeight: 32)
+
+                HStack(spacing: 7) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(lockedInk.opacity(0.16))
+                            Capsule()
+                                .fill(isUnlocked ? stampGold : lockedInk.opacity(0.42))
+                                .frame(width: geo.size.width * progress)
+                        }
+                    }
+                    .frame(height: 6)
+
                     Text("\(min(status.diaryCount, tier.threshold))/\(tier.threshold)")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .foregroundStyle(isUnlocked ? accent : lockedTone.opacity(0.72))
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundStyle(bodyColor)
+                        .monospacedDigit()
+                }
+            }
+            .frame(width: 146)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var monthArchiveSection: some View {
+        if !monthArchives.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("月度收集")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(ink)
+
+                    Text("从第一次生成日记的月份开始")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(mutedInk.opacity(0.66))
                 }
 
-                Text(tier.condition)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isUnlocked ? mutedInk.opacity(0.74) : lockedTone.opacity(0.64))
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(isUnlocked ? Color(red: 0.88, green: 0.85, blue: 0.79) : Color(red: 0.82, green: 0.80, blue: 0.76))
-                        Capsule()
-                            .fill(isUnlocked ? accent : Color(red: 0.67, green: 0.65, blue: 0.61))
-                            .frame(width: geo.size.width * progress)
+                VStack(spacing: 12) {
+                    ForEach(monthArchives) { archive in
+                        monthArchiveRow(archive)
                     }
                 }
-                .frame(height: 7)
+            }
+            .padding(18)
+            .background(.white.opacity(0.36), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color(red: 0.50, green: 0.42, blue: 0.32).opacity(0.10), lineWidth: 1)
             }
         }
-        .padding(16)
-        .background(.white.opacity(isUnlocked ? 0.88 : 0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.black.opacity(0.035), lineWidth: 1)
+    }
+
+    private func monthArchiveRow(_ archive: AchievementMonthArchive) -> some View {
+        let progress = min(CGFloat(archive.count) / CGFloat(AchievementSystem.monthlyCap), 1)
+        let isCurrentMonth = Calendar.current.isDate(archive.month, equalTo: .now, toGranularity: .month)
+        let rowInk = archive.count > 0 ? ink : mutedInk.opacity(0.55)
+
+        return VStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(monthTitle(for: archive.month))
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundStyle(rowInk)
+
+                if isCurrentMonth {
+                    Text("本月")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .frame(height: 18)
+                        .background(stampGold.opacity(0.82), in: Capsule())
+                }
+
+                Spacer()
+
+                Text("\(archive.count)/\(AchievementSystem.monthlyCap)")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(archive.count > 0 ? stampRed.opacity(0.82) : mutedInk.opacity(0.42))
+                    .monospacedDigit()
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(lockedInk.opacity(0.13))
+                    Capsule()
+                        .fill(archive.count > 0 ? stampGold.opacity(0.86) : lockedInk.opacity(0.20))
+                        .frame(width: geo.size.width * progress)
+                }
+            }
+            .frame(height: 7)
         }
+    }
+
+    private func monthTitle(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月"
+        return formatter.string(from: date)
     }
 }
 
@@ -3648,21 +3761,87 @@ private struct AchievementPopup: View {
 
 private struct PaperTextureBackground: View {
     var body: some View {
+        AchievementPaperBackground()
+    }
+}
+
+private struct AchievementPaperBackground: View {
+    var body: some View {
         ZStack {
-            Color(red: 0.92, green: 0.90, blue: 0.86)
+            Color(red: 0.955, green: 0.935, blue: 0.875)
+
             LinearGradient(
-                colors: [.white.opacity(0.42), Color(red: 0.82, green: 0.78, blue: 0.70).opacity(0.18)],
-                startPoint: .top,
-                endPoint: .bottom
+                colors: [
+                    .white.opacity(0.40),
+                    Color(red: 0.90, green: 0.84, blue: 0.73).opacity(0.26),
+                    Color(red: 0.76, green: 0.68, blue: 0.55).opacity(0.14)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
+
             Canvas { context, size in
-                for index in 0..<160 {
-                    let x = CGFloat((index * 37) % 997) / 997 * size.width
-                    let y = CGFloat((index * 71) % 991) / 991 * size.height
-                    let rect = CGRect(x: x, y: y, width: 1.2, height: 1.2)
-                    context.fill(Path(ellipseIn: rect), with: .color(.black.opacity(0.055)))
+                for index in 0..<760 {
+                    let x = CGFloat((index * 53) % 1193) / 1193 * size.width
+                    let y = CGFloat((index * 97) % 1187) / 1187 * size.height
+                    let dotSize = CGFloat((index % 5) + 1) * 0.62
+                    let opacity = 0.028 + Double(index % 6) * 0.008
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: x, y: y, width: dotSize, height: dotSize)),
+                        with: .color(Color(red: 0.34, green: 0.28, blue: 0.22).opacity(opacity))
+                    )
+                }
+
+                for index in 0..<170 {
+                    let x = CGFloat((index * 137) % 1103) / 1103 * size.width
+                    let y = CGFloat((index * 191) % 1097) / 1097 * size.height
+                    let length = CGFloat(28 + (index % 9) * 12)
+                    let angle = CGFloat(index % 13) * .pi / 52 - .pi / 8
+                    var path = Path()
+                    path.move(to: CGPoint(x: x, y: y))
+                    path.addLine(to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length))
+                    context.stroke(
+                        path,
+                        with: .color(Color(red: 0.42, green: 0.34, blue: 0.25).opacity(index % 4 == 0 ? 0.070 : 0.045)),
+                        lineWidth: CGFloat(index % 3 == 0 ? 0.95 : 0.55)
+                    )
+                }
+
+                for index in 0..<18 {
+                    let x = CGFloat((index * 223) % 977) / 977 * size.width
+                    let y = CGFloat((index * 311) % 991) / 991 * size.height
+                    let radius = CGFloat(64 + (index % 5) * 34)
+                    context.stroke(
+                        Path(ellipseIn: CGRect(x: x - radius / 2, y: y - radius / 2, width: radius, height: radius)),
+                        with: .color(Color(red: 0.50, green: 0.42, blue: 0.32).opacity(index % 3 == 0 ? 0.040 : 0.026)),
+                        lineWidth: 1.35
+                    )
+                }
+
+                for index in 0..<34 {
+                    let x = CGFloat((index * 313) % 1009) / 1009 * size.width
+                    let y = CGFloat((index * 419) % 1013) / 1013 * size.height
+                    let width = CGFloat(90 + (index % 6) * 42)
+                    let height = CGFloat(20 + (index % 5) * 13)
+                    let rect = CGRect(x: x - width / 2, y: y - height / 2, width: width, height: height)
+                    context.fill(
+                        Path(ellipseIn: rect),
+                        with: .color(Color(red: 0.68, green: 0.58, blue: 0.44).opacity(0.018))
+                    )
                 }
             }
+            .blendMode(.multiply)
+
+            RadialGradient(
+                colors: [
+                    .clear,
+                    Color(red: 0.54, green: 0.46, blue: 0.36).opacity(0.16)
+                ],
+                center: .center,
+                startRadius: 120,
+                endRadius: 620
+            )
+            .blendMode(.multiply)
         }
         .ignoresSafeArea()
     }
@@ -4040,11 +4219,13 @@ private struct StickerLibraryPage: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
+                            libraryHeader(safeTop: geo.safeAreaInsets.top)
+
                             if groups.isEmpty {
                                 emptyState
                                     .frame(maxWidth: .infinity)
                                     .padding(.horizontal, 24)
-                                    .padding(.top, 60)
+                                    .padding(.top, 42)
                             } else {
                                 StickerLibraryTimelinePaper(
                                     groups: groups,
@@ -4073,7 +4254,6 @@ private struct StickerLibraryPage: View {
                                 .padding(.horizontal, 24)
                             }
                         }
-                        .padding(.top, pinnedHeaderHeight(safeTop: geo.safeAreaInsets.top))
                         .padding(.bottom, isImporting ? 118 : 56)
                     }
                     .onAppear {
@@ -4086,8 +4266,7 @@ private struct StickerLibraryPage: View {
                     importBar
                 }
 
-                // Pinned header — always fixed at the top
-                pinnedHeader(safeTop: geo.safeAreaInsets.top)
+                fixedCloseButton(safeTop: geo.safeAreaInsets.top)
                     .zIndex(8)
 
                 // Tap outside sticker to cancel delete mode
@@ -4136,64 +4315,45 @@ private struct StickerLibraryPage: View {
         }
     }
 
-    private func pinnedHeaderHeight(safeTop: CGFloat) -> CGFloat {
-        safeTop + 16 + 40 + 22 + 18
+    private func libraryHeader(safeTop: CGFloat) -> some View {
+        VStack(spacing: 10) {
+            Text("贴纸库")
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .foregroundStyle(self.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.top, safeTop + 54)
+
+            Text(headerSubtitle)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(self.mutedInk.opacity(0.72))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 72)
+        .padding(.bottom, 28)
     }
 
-    private func pinnedHeader(safeTop: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("贴纸库")
-                        .font(.system(size: 32, weight: .black, design: .rounded))
-                        .foregroundStyle(self.ink)
-
-                    Text(headerSubtitle)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(self.mutedInk.opacity(0.72))
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 12)
-
+    private func fixedCloseButton(safeTop: CGFloat) -> some View {
+        VStack {
+            HStack {
                 closeButton
+                Spacer()
             }
-            .padding(.horizontal, 24)
-            .padding(.top, safeTop + 16)
-            .padding(.bottom, 16)
-            .background(
-                Color(red: 0.94, green: 0.92, blue: 0.86)
-                    .opacity(0.95)
-                    .overlay(.ultraThinMaterial.opacity(0.4))
-            )
-            .overlay(alignment: .bottom) {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.92, green: 0.90, blue: 0.86).opacity(0.18),
-                        Color(red: 0.92, green: 0.90, blue: 0.86).opacity(0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 16)
-                .offset(y: 16)
-                .allowsHitTesting(false)
-            }
+            .padding(.leading, 22)
+            .padding(.top, safeTop + 18)
 
             Spacer()
         }
-        .ignoresSafeArea(edges: .top)
     }
 
     private var closeButton: some View {
         Button(action: onClose) {
             Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 16, weight: .black))
                 .foregroundStyle(self.mutedInk)
-                .frame(width: 42, height: 42)
-                .background(Color.white.opacity(0.72), in: Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.82), lineWidth: 1))
-                .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
+                .frame(width: 44, height: 44)
+                .background(.white.opacity(0.58), in: Circle())
+                .overlay(Circle().stroke(.white.opacity(0.74), lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("关闭贴纸库")
@@ -4855,8 +5015,7 @@ private struct DiaryBookView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color(red: 0.95, green: 0.91, blue: 0.85)
-                    .ignoresSafeArea()
+                PaperTextureBackground()
 
                 DiaryNotebookArchiveView(isOpen: isArchivingPage || isPageArchived)
                     .opacity(isArchivingPage || isPageArchived ? 1 : 0)
@@ -8374,7 +8533,7 @@ private struct SettingsSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     closeButton
 
-                    Image("StickerDiary")
+                    Image("AppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 92, height: 92)
@@ -8618,7 +8777,7 @@ private struct ContactUsPage: View {
                 VStack(alignment: .leading, spacing: 0) {
                     closeButton
 
-                    Image("StickerDiary")
+                    Image("AppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 92, height: 92)
@@ -8786,7 +8945,7 @@ private struct AboutAppSheet: View {
                     .padding(.trailing, 20)
 
                     // App icon (left-aligned, like nosh)
-                    Image("StickerDiary")
+                    Image("AppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 110, height: 110)
@@ -8898,7 +9057,7 @@ private struct VersionInfoSheet: View {
                 Spacer().frame(height: 12)
 
                 // App icon
-                Image("StickerDiary")
+                Image("AppIcon")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100, height: 100)
