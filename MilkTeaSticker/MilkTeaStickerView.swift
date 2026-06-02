@@ -105,6 +105,7 @@ struct DailyStickerView: View {
     @State private var diaryGenerationRevision = 0
     @State private var diaryGenerationToken = UUID()
     @State private var diaryGeneratedTitle: String?
+    @State private var unlockedAchievement: AchievementUnlock?
     @State private var stickerRecognition: StickerRecognitionResult?
     @State private var showRecognitionReview = false
     @State private var pendingBatchImages: [UIImage] = []
@@ -218,10 +219,21 @@ struct DailyStickerView: View {
             } else {
                 cameraView
             }
+
+            if let unlockedAchievement {
+                AchievementUnlockOverlay(unlock: unlockedAchievement) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                        self.unlockedAchievement = nil
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                .zIndex(60)
+            }
         }
         .animation(.spring(response: 0.48, dampingFraction: 0.86), value: stickerImage != nil)
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isProcessing || isBatchLoading)
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: showHome)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: unlockedAchievement?.id)
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await camera.configure()
@@ -815,6 +827,7 @@ struct DailyStickerView: View {
         diaryGenerationToken = token
         isGeneratingDiary = true
         diaryGenerationError = nil
+        let diaryCountBeforeGeneration = AchievementSystem.currentMonthDiaryCount(records: calendarRecords, date: date)
 
         Task {
             do {
@@ -824,6 +837,12 @@ struct DailyStickerView: View {
                     diaryEntries = makeDiaryEntries(from: generated, sources: sources)
                     diaryGeneratedTitle = nil
                     saveDiaryEntriesRecord(for: date, entries: diaryEntries, title: nil)
+                    presentAchievementIfNeeded(
+                        beforeCount: diaryCountBeforeGeneration,
+                        afterRecords: calendarRecords,
+                        date: date,
+                        representativeSticker: sources.first?.image
+                    )
                     isGeneratingDiary = false
                     diaryGenerationError = nil
                     diaryGenerationRevision += 1
@@ -1021,6 +1040,29 @@ struct DailyStickerView: View {
             stickerSlots: stickerSlots,
             hadStickerSlots: hadStickerSlots
         )
+    }
+
+    private func presentAchievementIfNeeded(beforeCount: Int, afterRecords: [StickerCalendarRecord], date: Date, representativeSticker: UIImage?) {
+        let afterCount = AchievementSystem.currentMonthDiaryCount(records: afterRecords, date: date)
+        guard afterCount > beforeCount else { return }
+        guard let tier = AchievementSystem.tiers.last(where: { beforeCount < $0.threshold && afterCount >= $0.threshold }) else { return }
+
+        let status = AchievementSystem.status(
+            diaryCount: afterCount,
+            dayCount: AchievementSystem.currentMonthProductionDayCount(records: afterRecords, date: date),
+            representativeSticker: representativeSticker
+        )
+        let nextThreshold = AchievementSystem.tiers.first(where: { $0.threshold > tier.threshold })?.threshold ?? AchievementSystem.monthlyCap
+
+        unlockedAchievement = AchievementUnlock(
+            tier: tier,
+            currentCount: afterCount,
+            nextCount: nextThreshold,
+            days: status.dayCount,
+            progress: status.progress(to: tier),
+            representativeSticker: representativeSticker
+        )
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func diaryStickerImages() -> [UIImage] {
@@ -1400,6 +1442,23 @@ private struct AchievementStatus {
         let previous = AchievementSystem.threshold(before: tier.threshold)
         let span = max(tier.threshold - previous, 1)
         return min(max(CGFloat(diaryCount - previous) / CGFloat(span), 0), 1)
+    }
+}
+
+private struct AchievementUnlock: Identifiable, Equatable {
+    let tier: AchievementTier
+    let currentCount: Int
+    let nextCount: Int
+    let days: Int
+    let progress: CGFloat
+    let representativeSticker: UIImage?
+
+    var id: Int { tier.threshold }
+
+    static func == (lhs: AchievementUnlock, rhs: AchievementUnlock) -> Bool {
+        lhs.id == rhs.id
+        && lhs.currentCount == rhs.currentCount
+        && lhs.days == rhs.days
     }
 }
 
@@ -3648,6 +3707,149 @@ private struct CalendarDayCell: View {
 }
 
 
+private struct AchievementUnlockOverlay: View {
+    let unlock: AchievementUnlock
+    let onDone: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.24)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDone)
+
+            AchievementFireworksOverlay()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            AchievementPopup(
+                title: unlock.tier.title,
+                subtitle: unlock.tier.condition.replacingOccurrences(of: "。", with: ""),
+                currentCount: unlock.currentCount,
+                nextCount: unlock.nextCount,
+                days: unlock.days,
+                progress: unlock.progress,
+                imageName: unlock.tier.imageName,
+                sticker: unlock.representativeSticker,
+                onDone: onDone
+            )
+            .padding(.horizontal, 22)
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+            .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .onTapGesture {}
+        }
+    }
+}
+
+private struct AchievementFireworkSpark: Identifiable {
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var vx: CGFloat
+    var vy: CGFloat
+    var color: Color
+    var life: CGFloat = 1
+    var size: CGFloat
+}
+
+private struct AchievementFirework: Identifiable {
+    let id = UUID()
+    var sparks: [AchievementFireworkSpark]
+}
+
+private struct AchievementFireworksOverlay: View {
+    @State private var fireworks: [AchievementFirework] = []
+
+    private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        GeometryReader { geo in
+            Canvas { context, _ in
+                for firework in fireworks {
+                    for spark in firework.sparks where spark.life > 0 {
+                        let rect = CGRect(
+                            x: spark.x - spark.size / 2,
+                            y: spark.y - spark.size / 2,
+                            width: spark.size,
+                            height: spark.size
+                        )
+                        context.fill(
+                            Path(ellipseIn: rect.insetBy(dx: -spark.size * 0.75, dy: -spark.size * 0.75)),
+                            with: .color(spark.color.opacity(Double(spark.life) * 0.22))
+                        )
+                        context.fill(
+                            Path(ellipseIn: rect),
+                            with: .color(spark.color.opacity(Double(spark.life)))
+                        )
+                    }
+                }
+            }
+            .onAppear {
+                scheduleFireworks(in: geo.size)
+            }
+            .onReceive(timer) { _ in
+                updateFireworks()
+            }
+        }
+    }
+
+    private func scheduleFireworks(in size: CGSize) {
+        fireworks.removeAll()
+        let points = [
+            CGPoint(x: size.width * 0.24, y: size.height * 0.26),
+            CGPoint(x: size.width * 0.76, y: size.height * 0.22),
+            CGPoint(x: size.width * 0.50, y: size.height * 0.18),
+            CGPoint(x: size.width * 0.30, y: size.height * 0.48),
+            CGPoint(x: size.width * 0.72, y: size.height * 0.46)
+        ]
+
+        for (index, point) in points.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.22) {
+                spawnFirework(at: point)
+            }
+        }
+    }
+
+    private func spawnFirework(at center: CGPoint) {
+        let palette = [
+            Color(red: 0.98, green: 0.68, blue: 0.20),
+            Color(red: 0.95, green: 0.34, blue: 0.28),
+            Color(red: 0.42, green: 0.62, blue: 0.96),
+            Color(red: 0.52, green: 0.78, blue: 0.48),
+            Color(red: 0.96, green: 0.78, blue: 0.34)
+        ]
+        let sparkCount = Int.random(in: 42...66)
+        let sparks = (0..<sparkCount).map { index -> AchievementFireworkSpark in
+            let angle = CGFloat.random(in: 0...(2 * .pi))
+            let speed = CGFloat.random(in: 1.6...5.3)
+            return AchievementFireworkSpark(
+                x: center.x,
+                y: center.y,
+                vx: cos(angle) * speed,
+                vy: sin(angle) * speed,
+                color: palette[index % palette.count],
+                size: CGFloat.random(in: 2.2...5.2)
+            )
+        }
+        fireworks.append(AchievementFirework(sparks: sparks))
+    }
+
+    private func updateFireworks() {
+        for fireworkIndex in fireworks.indices {
+            for sparkIndex in fireworks[fireworkIndex].sparks.indices {
+                fireworks[fireworkIndex].sparks[sparkIndex].x += fireworks[fireworkIndex].sparks[sparkIndex].vx
+                fireworks[fireworkIndex].sparks[sparkIndex].y += fireworks[fireworkIndex].sparks[sparkIndex].vy
+                fireworks[fireworkIndex].sparks[sparkIndex].vy += 0.035
+                fireworks[fireworkIndex].sparks[sparkIndex].vx *= 0.988
+                fireworks[fireworkIndex].sparks[sparkIndex].vy *= 0.988
+                fireworks[fireworkIndex].sparks[sparkIndex].life -= 0.010
+            }
+        }
+        fireworks.removeAll { firework in
+            firework.sparks.allSatisfy { $0.life <= 0 }
+        }
+    }
+}
+
 private struct AchievementPopup: View {
     let title: String
     let subtitle: String
@@ -3655,6 +3857,7 @@ private struct AchievementPopup: View {
     let nextCount: Int
     let days: Int
     let progress: CGFloat
+    let imageName: String?
     let sticker: UIImage?
     let onDone: () -> Void
 
@@ -3670,7 +3873,14 @@ private struct AchievementPopup: View {
                                 .stroke(Color.white.opacity(0.62), lineWidth: 1.5)
                         }
 
-                    if let sticker {
+                    if let imageName {
+                        Image(imageName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 96, height: 96)
+                            .rotationEffect(.degrees(-6))
+                            .shadow(color: .black.opacity(0.13), radius: 8, y: 5)
+                    } else if let sticker {
                         Image(uiImage: sticker)
                             .resizable()
                             .scaledToFit()
@@ -8533,7 +8743,7 @@ private struct SettingsSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     closeButton
 
-                    Image("AppIcon")
+                    Image("BrandAppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 92, height: 92)
@@ -8548,7 +8758,7 @@ private struct SettingsSheet: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 18)
 
-                    Text("Sticker Diary")
+                    Text("贴纸日记")
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(accent)
                         .padding(.horizontal, 24)
@@ -8777,7 +8987,7 @@ private struct ContactUsPage: View {
                 VStack(alignment: .leading, spacing: 0) {
                     closeButton
 
-                    Image("AppIcon")
+                    Image("BrandAppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 92, height: 92)
@@ -8792,7 +9002,7 @@ private struct ContactUsPage: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 18)
 
-                    Text("Sticker Diary")
+                    Text("贴纸日记")
                         .font(.system(size: 20, weight: .black))
                         .foregroundStyle(accent)
                         .padding(.horizontal, 24)
@@ -8945,7 +9155,7 @@ private struct AboutAppSheet: View {
                     .padding(.trailing, 20)
 
                     // App icon (left-aligned, like nosh)
-                    Image("AppIcon")
+                    Image("BrandAppIcon")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 110, height: 110)
@@ -9057,7 +9267,7 @@ private struct VersionInfoSheet: View {
                 Spacer().frame(height: 12)
 
                 // App icon
-                Image("AppIcon")
+                Image("BrandAppIcon")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100, height: 100)
