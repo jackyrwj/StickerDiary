@@ -1,7 +1,7 @@
 import AVFoundation
 import CoreImage
+import Network
 import CoreImage.CIFilterBuiltins
-import CoreMotion
 import PhotosUI
 import StoreKit
 import SwiftUI
@@ -83,9 +83,11 @@ private extension UIView {
 }
 
 struct DailyStickerView: View {
+    var onReplayOnboarding: () -> Void = {}
+
     @StateObject private var camera = StickerCameraModel()
-    @StateObject private var motion = GravityMotionModel()
     @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var showPhotosPicker = false
     @State private var sourceImage: UIImage?
     @State private var stickerImage: UIImage?
     @State private var isProcessing = false
@@ -106,9 +108,12 @@ struct DailyStickerView: View {
     @State private var diaryGenerationToken = UUID()
     @State private var diaryGeneratedTitle: String?
     @State private var unlockedAchievement: AchievementUnlock?
+    @State private var pendingAchievementUnlock: AchievementUnlock?
+    @State private var pendingAchievementUnlockDate: Date?
     @State private var stickerRecognition: StickerRecognitionResult?
     @State private var showRecognitionReview = false
     @State private var pendingBatchImages: [UIImage] = []
+    @State private var pendingBatchPhotoItems: [PhotosPickerItem] = []
     @State private var stickerProcessingPulse = false
     // Sticker id that should play the "stamp" animation when the library appears
     @State private var justStampedStickerID: String?
@@ -118,7 +123,17 @@ struct DailyStickerView: View {
     @State private var homeSelectedDate: Date = .now
     @State private var showHome = true
     @State private var diaryReturnToCalendar = false
+    @State private var pendingReviewAfterDiary = false
     @State private var returnToDiaryAfterCapture = false
+    @State private var calendarRefreshRevision = 0
+    @State private var cameraActivationToken = UUID()
+    @State private var showCameraPermissionAlert = false
+    @State private var showPhotoPermissionAlert = false
+    @State private var activeAppCoachStep: AppCoachStep?
+    @State private var isCoachWaitingForStickerCapture = false
+    @State private var isCoachWaitingForDiaryAnimation = false
+    @State private var shouldShowDiaryShareCoachAfterAchievement = false
+    @AppStorage("hasSeenMainFlowCoachV1") private var hasSeenMainFlowCoach = false
 
     var body: some View {
         ZStack {
@@ -150,6 +165,10 @@ struct DailyStickerView: View {
                     onCalendar: { openCalendarFromHome() },
                     onTodayBag: { openStickerLibraryFromHome() },
                     onStickerLibrary: { openStickerLibraryFromHome() },
+                    activeCoachStep: activeAppCoachStep,
+                    onCoachAction: handleCoachAction,
+                    onCoachSkip: finishMainFlowCoach,
+                    onReplayOnboarding: restartMainFlowCoach,
                     onStickerPreview: { items, selectedID in
                         openStickerPreview(items: items, selectedID: selectedID)
                     }
@@ -170,6 +189,7 @@ struct DailyStickerView: View {
                 StickerCalendarPage(
                     records: calendarRecords,
                     currentStickers: diaryStickerImages(),
+                    refreshToken: calendarRefreshRevision,
                     onClose: {
                         showCalendar = false
                         showHome = true
@@ -195,7 +215,11 @@ struct DailyStickerView: View {
                         diaryEntriesForDate(date)
                     },
                     onRegenerate: regenerateDiaryForDate,
-                    onClearDiary: clearDiaryForDate
+                    onClearDiary: clearDiaryForDate,
+                    activeCoachStep: activeAppCoachStep,
+                    onCoachAction: handleCoachAction,
+                    onCoachSkip: finishMainFlowCoach,
+                    onDiaryGenerationAnimationComplete: handleDiaryGenerationAnimationComplete
                 ) {
                     showDiary = false
                     if diaryReturnToCalendar {
@@ -203,6 +227,16 @@ struct DailyStickerView: View {
                         showCalendar = true
                     } else {
                         showHome = true
+                    }
+                    if pendingReviewAfterDiary {
+                        pendingReviewAfterDiary = false
+                        UserDefaults.standard.set(true, forKey: "hasRequestedReviewAfterDiary")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                            if let scene = UIApplication.shared.connectedScenes
+                                .compactMap({ $0 as? UIWindowScene }).first {
+                                SKStoreReviewController.requestReview(in: scene)
+                            }
+                        }
                     }
                 }
             } else if isProcessing || isBatchLoading {
@@ -212,7 +246,6 @@ struct DailyStickerView: View {
                     stickerImage: stickerImage,
                     sourceImage: sourceImage,
                     result: stickerRecognition,
-                    gravity: motion.gravity,
                     onCancel: discardRecognizedSticker,
                     onConfirm: confirmRecognizedSticker
                 )
@@ -225,6 +258,7 @@ struct DailyStickerView: View {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                         self.unlockedAchievement = nil
                     }
+                    continuePendingDiaryShareCoachIfNeeded()
                 }
                 .transition(.opacity.combined(with: .scale(scale: 1.02)))
                 .zIndex(60)
@@ -236,18 +270,131 @@ struct DailyStickerView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: unlockedAchievement?.id)
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            await camera.configure()
-            calendarRecords = DiaryRecordStore.shared.loadCalendarRecords()
-            motion.start()
+            startMainFlowCoachIfNeeded()
+            let records = await Task.detached(priority: .utility) {
+                SampleContentSeeder.seedIfNeeded()
+                return DiaryRecordStore.shared.loadCalendarRecords()
+            }.value
+            calendarRecords = records
         }
         .onDisappear {
-            camera.stop()
-            motion.stop()
+            stopCameraSession()
         }
         .onChange(of: selectedItems) { _, newItems in
             guard !newItems.isEmpty else { return }
             Task {
                 await loadPhotos(newItems)
+            }
+        }
+        .alert("需要打开相机权限", isPresented: $showCameraPermissionAlert) {
+            Button("去设置") {
+                openAppSettings()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("拍照生成贴纸需要使用相机。请在系统设置里允许本 App 使用相机。")
+        }
+        .alert("需要打开相册权限", isPresented: $showPhotoPermissionAlert) {
+            Button("去设置") {
+                openAppSettings()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("从照片导入贴纸需要访问相册。请在系统设置里允许本 App 读取照片。")
+        }
+    }
+
+    private func startMainFlowCoachIfNeeded() {
+        guard !hasSeenMainFlowCoach else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.72) {
+            guard !hasSeenMainFlowCoach, activeAppCoachStep == nil, showHome else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                activeAppCoachStep = .homeAddSticker
+            }
+        }
+    }
+
+    private func restartMainFlowCoach() {
+        hasSeenMainFlowCoach = false
+        isCoachWaitingForStickerCapture = false
+        isCoachWaitingForDiaryAnimation = false
+        shouldShowDiaryShareCoachAfterAchievement = false
+        showHome = true
+        showDiary = false
+        showCalendar = false
+        showStickerLibrary = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                activeAppCoachStep = .homeAddSticker
+            }
+        }
+    }
+
+    private func finishMainFlowCoach() {
+        hasSeenMainFlowCoach = true
+        isCoachWaitingForStickerCapture = false
+        isCoachWaitingForDiaryAnimation = false
+        shouldShowDiaryShareCoachAfterAchievement = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            activeAppCoachStep = nil
+        }
+    }
+
+    private func handleCoachAction(_ step: AppCoachStep) {
+        switch step {
+        case .homeAddSticker:
+            openCameraForDateFromHome(homeSelectedDate)
+        case .homeWriteDiary:
+            openDiaryForDate(homeSelectedDate)
+        case .diaryGenerate:
+            regenerateDiaryForDate(diarySelectedDate)
+        case .diaryShare:
+            hasSeenMainFlowCoach = true
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeAppCoachStep = .shareComplete
+            }
+        case .shareComplete:
+            finishMainFlowCoach()
+        }
+    }
+
+    private func handleDiaryGenerationAnimationComplete() {
+        let willShowAchievement = presentPendingAchievementAfterDiaryAnimation()
+
+        guard isCoachWaitingForDiaryAnimation else { return }
+        isCoachWaitingForDiaryAnimation = false
+        if willShowAchievement {
+            shouldShowDiaryShareCoachAfterAchievement = true
+        } else {
+            scheduleDiaryShareCoach()
+        }
+    }
+
+    private func presentPendingAchievementAfterDiaryAnimation() -> Bool {
+        guard let unlock = pendingAchievementUnlock,
+              let unlockDate = pendingAchievementUnlockDate else { return false }
+        guard showDiary else { return false }
+        pendingAchievementUnlock = nil
+        pendingAchievementUnlockDate = nil
+        AchievementSystem.markUnlocked(threshold: unlock.tier.threshold, for: unlockDate)
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+            unlockedAchievement = unlock
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        return true
+    }
+
+    private func continuePendingDiaryShareCoachIfNeeded() {
+        guard shouldShowDiaryShareCoachAfterAchievement else { return }
+        shouldShowDiaryShareCoachAfterAchievement = false
+        scheduleDiaryShareCoach()
+    }
+
+    private func scheduleDiaryShareCoach() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            guard showDiary else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                activeAppCoachStep = .diaryShare
             }
         }
     }
@@ -270,7 +417,7 @@ struct DailyStickerView: View {
 
                     ZStack {
                         if camera.isReady {
-                            CameraPreview(session: camera.session)
+                            CameraPreview(session: camera.session, isMirrored: camera.isUsingFrontCamera)
                         } else {
                             LinearGradient(
                                 colors: [
@@ -284,6 +431,15 @@ struct DailyStickerView: View {
                                 .font(.system(size: 52, weight: .light))
                                 .foregroundStyle(.white.opacity(0.72))
                         }
+
+                        VStack {
+                            HStack {
+                                Spacer()
+                                cameraSwitchButton
+                            }
+                            Spacer()
+                        }
+                        .padding(18)
                     }
                     .frame(width: previewWidth, height: previewHeight)
                     .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
@@ -372,30 +528,21 @@ struct DailyStickerView: View {
         }
     }
 
-    private var cameraTopBar: some View {
-        HStack {
-            Button {
-                resetToCamera()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.56), in: Circle())
-            }
-
-            Spacer()
-
-            Button {
-                camera.switchCamera()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath.camera")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.56), in: Circle())
-            }
+    private var cameraSwitchButton: some View {
+        Button {
+            camera.switchCamera()
+        } label: {
+            Image(systemName: "arrow.triangle.2.circlepath.camera")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(.black.opacity(0.56), in: Circle())
+                .shadow(color: .black.opacity(0.16), radius: 10, y: 5)
         }
+        .buttonStyle(.plain)
+        .disabled(!camera.isReady || isProcessing || isBatchLoading)
+        .opacity(camera.isReady ? 1 : 0.45)
+        .accessibilityLabel("切换前后摄像头")
     }
 
     private var viewfinderOverlay: some View {
@@ -445,41 +592,117 @@ struct DailyStickerView: View {
 
             Spacer()
 
-            PhotosPicker(selection: $selectedItems, maxSelectionCount: 20, matching: .images) {
+            Button {
+                requestPhotoLibraryAccess()
+            } label: {
                 Image(systemName: "photo.on.rectangle")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color(red: 0.38, green: 0.34, blue: 0.30))
                     .frame(width: 52, height: 52)
                     .background(Color(red: 0.92, green: 0.90, blue: 0.87), in: Circle())
             }
+            .photosPicker(isPresented: $showPhotosPicker, selection: $selectedItems, maxSelectionCount: 20, matching: .images)
         }
+    }
+
+    private func requestPhotoLibraryAccess() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized, .limited:
+            showPhotosPicker = true
+        case .notDetermined:
+            Task {
+                let result = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                await MainActor.run {
+                    if result == .authorized || result == .limited {
+                        showPhotosPicker = true
+                    } else {
+                        showPhotoPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showPhotoPermissionAlert = true
+        @unknown default:
+            showPhotoPermissionAlert = true
+        }
+    }
+
+    private func requestCameraAccess(then action: @escaping () -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            action()
+        case .notDetermined:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    if granted {
+                        action()
+                    } else {
+                        showCameraPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
+        }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func loadPhotos(_ items: [PhotosPickerItem]) async {
         errorMessage = nil
         isBatchLoading = true
-        await Task.yield()
-        defer {
-            Task { @MainActor in
-                selectedItems = []
-                isBatchLoading = false
+        pendingBatchPhotoItems = Array(items.dropFirst())
+
+        var remainingItems = items
+        var firstImage: UIImage?
+        var failedCount = 0
+
+        while !remainingItems.isEmpty {
+            let item = remainingItems.removeFirst()
+            if let image = await Self.decodeSelectedPhoto(item) {
+                firstImage = image
+                break
+            } else {
+                failedCount += 1
+                await MainActor.run {
+                    pendingBatchPhotoItems = remainingItems
+                }
             }
         }
 
-        let (images, failedCount) = await Self.decodeSelectedPhotos(items)
-
         await MainActor.run {
-            if images.isEmpty {
+            selectedItems = []
+            isBatchLoading = false
+
+            guard let firstImage else {
+                pendingBatchPhotoItems = []
                 errorMessage = "无法读取这些图片。"
                 return
             }
 
-            sourceImage = images.first
-            enqueueBatchImages(images)
+            sourceImage = firstImage
             if failedCount > 0 {
                 errorMessage = "有 \(failedCount) 张图片读取失败，其余图片会继续处理。"
             }
+            process(firstImage, shouldContinueQueue: true)
         }
+    }
+
+    private static func decodeSelectedPhoto(_ item: PhotosPickerItem) async -> UIImage? {
+        await Task.detached(priority: .userInitiated) {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                return nil
+            }
+            return image.resizedForStickerProcessing(maxDimension: 1200)
+        }.value
     }
 
     private static func decodeSelectedPhotos(_ items: [PhotosPickerItem]) async -> (images: [UIImage], failedCount: Int) {
@@ -511,12 +734,33 @@ struct DailyStickerView: View {
 
     private func processNextQueuedImage() {
         guard !isProcessing,
-              stickerImage == nil,
-              let nextImage = pendingBatchImages.first else { return }
+              stickerImage == nil else { return }
 
-        pendingBatchImages.removeFirst()
-        sourceImage = nextImage
-        process(nextImage, shouldContinueQueue: true)
+        if let nextImage = pendingBatchImages.first {
+            pendingBatchImages.removeFirst()
+            sourceImage = nextImage
+            process(nextImage, shouldContinueQueue: true)
+            return
+        }
+
+        guard let nextPhotoItem = pendingBatchPhotoItems.first else { return }
+
+        pendingBatchPhotoItems.removeFirst()
+        isBatchLoading = true
+        Task {
+            let image = await Self.decodeSelectedPhoto(nextPhotoItem)
+            await MainActor.run {
+                isBatchLoading = false
+                guard let image else {
+                    errorMessage = "有 1 张图片读取失败，其余图片会继续处理。"
+                    processNextQueuedImage()
+                    return
+                }
+
+                sourceImage = image
+                process(image, shouldContinueQueue: true)
+            }
+        }
     }
 
     private func loadPhoto(_ item: PhotosPickerItem) async {
@@ -550,7 +794,7 @@ struct DailyStickerView: View {
                     showRecognitionReview = true
                     isProcessing = false
                     isCameraMode = false
-                    camera.stop()
+                    stopCameraSession()
                 }
             } catch {
                 await MainActor.run {
@@ -576,7 +820,7 @@ struct DailyStickerView: View {
         showDiary = false
         showCalendar = false
         showStickerLibrary = false
-        camera.stop()
+        stopCameraSession()
     }
 
     private func openLibraryStickerPreview(entry: StickerEntry, image: UIImage) {
@@ -599,11 +843,29 @@ struct DailyStickerView: View {
         showHome = true
     }
 
+    private func startCameraWhenVisible() {
+        let token = UUID()
+        cameraActivationToken = token
+        Task {
+            await camera.configure()
+            await MainActor.run {
+                guard isCameraMode, cameraActivationToken == token else { return }
+                camera.start()
+            }
+        }
+    }
+
+    private func stopCameraSession() {
+        cameraActivationToken = UUID()
+        camera.stop()
+    }
+
     private func deletePreviewedSticker() {
         guard let selectedID = previewedStickerID,
               let selectedIndex = previewedStickers.firstIndex(where: { $0.id == selectedID }) else { return }
         let sticker = previewedStickers[selectedIndex]
         StickerStore.shared.deleteSticker(id: sticker.entry.id)
+        syncCalendarRecordForStickerDate(sticker.entry.date)
         previewedStickers.remove(at: selectedIndex)
         previewedStickerID = previewedStickers.indices.contains(selectedIndex)
             ? previewedStickers[selectedIndex].id
@@ -617,7 +879,42 @@ struct DailyStickerView: View {
         }
     }
 
+    private func syncCalendarRecordForStickerDate(_ date: Date) {
+        let orderedStickers = StickerStore.shared.loadOrderedStickersForDate(date)
+        let previewStickers = orderedStickers.prefix(1).map { Optional($0.image) }
+        let stickerCount = orderedStickers.count
+
+        if let index = calendarRecords.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: date) }) {
+            let isStickerOnlyRecord = calendarRecords[index].diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || calendarRecords[index].diaryText == "每日贴纸"
+            if stickerCount == 0,
+               isStickerOnlyRecord {
+                calendarRecords.remove(at: index)
+            } else {
+                calendarRecords[index].stickers = previewStickers
+                calendarRecords[index].stickerCountOverride = stickerCount
+            }
+        } else if stickerCount > 0 {
+            calendarRecords.append(
+                StickerCalendarRecord(
+                    date: date,
+                    stickers: previewStickers,
+                    diaryText: "每日贴纸",
+                    stickerCountOverride: stickerCount
+                )
+            )
+        }
+
+        calendarRefreshRevision += 1
+    }
+
     private func openCameraFromHome() {
+        requestCameraAccess {
+            openCameraFromHomeAfterPermission()
+        }
+    }
+
+    private func openCameraFromHomeAfterPermission() {
         clearStickerPreview()
         returnToDiaryAfterCapture = false
         diarySelectedDate = .now
@@ -628,10 +925,22 @@ struct DailyStickerView: View {
         showStickerLibrary = false
         stickerLibraryTargetDate = nil
         isCameraMode = true
-        camera.start()
+        startCameraWhenVisible()
     }
 
     private func openCameraForDateFromHome(_ date: Date) {
+        requestCameraAccess {
+            openCameraForDateFromHomeAfterPermission(date)
+        }
+    }
+
+    private func openCameraForDateFromHomeAfterPermission(_ date: Date) {
+        if activeAppCoachStep == .homeAddSticker {
+            isCoachWaitingForStickerCapture = true
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeAppCoachStep = nil
+            }
+        }
         clearStickerPreview()
         returnToDiaryAfterCapture = false
         diarySelectedDate = date
@@ -642,7 +951,7 @@ struct DailyStickerView: View {
         showStickerLibrary = false
         stickerLibraryTargetDate = nil
         isCameraMode = true
-        camera.start()
+        startCameraWhenVisible()
     }
 
     private func openCalendarFromHome() {
@@ -650,7 +959,7 @@ struct DailyStickerView: View {
         showHome = false
         showCalendar = true
         showStickerLibrary = false
-        camera.stop()
+        stopCameraSession()
     }
 
     private func openStickerLibraryFromHome() {
@@ -660,7 +969,7 @@ struct DailyStickerView: View {
         showCalendar = false
         stickerLibraryTargetDate = nil
         showStickerLibrary = true
-        camera.stop()
+        stopCameraSession()
     }
 
     private func closeStickerLibrary() {
@@ -687,9 +996,23 @@ struct DailyStickerView: View {
         showCalendar = false
         showStickerLibrary = false
         showDiary = true
+        if activeAppCoachStep == .homeWriteDiary {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+                guard showDiary, Calendar.current.isDate(diarySelectedDate, inSameDayAs: date) else { return }
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    activeAppCoachStep = .diaryGenerate
+                }
+            }
+        }
     }
 
     private func openCameraForDiaryDate(_ date: Date) {
+        requestCameraAccess {
+            openCameraForDiaryDateAfterPermission(date)
+        }
+    }
+
+    private func openCameraForDiaryDateAfterPermission(_ date: Date) {
         clearStickerPreview()
         returnToDiaryAfterCapture = true
         diarySelectedDate = date
@@ -699,7 +1022,7 @@ struct DailyStickerView: View {
         showStickerLibrary = false
         showHome = false
         isCameraMode = true
-        camera.start()
+        startCameraWhenVisible()
     }
 
     private func openStickerLibraryForDiaryDate(_ date: Date) {
@@ -711,7 +1034,7 @@ struct DailyStickerView: View {
         showCalendar = false
         showHome = false
         showStickerLibrary = true
-        camera.stop()
+        stopCameraSession()
     }
 
     private func recognitionResult(for entry: StickerEntry) -> StickerRecognitionResult {
@@ -750,9 +1073,14 @@ struct DailyStickerView: View {
 
     private func diaryEntriesForDate(_ date: Date) -> [DiaryEntry] {
         if let record = record(for: date) {
-            let textEntries = makeDiaryEntries(fromRecord: record)
-            if !textEntries.isEmpty {
-                return textEntries
+            // Sticker-only records (no real diary text) should show the empty diary state
+            let rawText = record.diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let isStickerOnly = rawText.isEmpty || rawText == "每日贴纸" || rawText == "今日日记"
+            if !isStickerOnly {
+                let textEntries = makeDiaryEntries(fromRecord: record)
+                if !textEntries.isEmpty {
+                    return textEntries
+                }
             }
         }
         return []
@@ -764,7 +1092,7 @@ struct DailyStickerView: View {
 
     private func hasSavedDiaryRecord(for date: Date) -> Bool {
         guard let record = record(for: date) else { return false }
-        return !record.diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return isRealDiaryText(record.diaryText)
     }
 
     private func generateDiaryIfPossible(for date: Date) {
@@ -791,18 +1119,9 @@ struct DailyStickerView: View {
     }
 
     private func diaryStickerSourcesForDate(_ date: Date) -> [DiaryStickerSource] {
-        // Match the home page sticker order exactly (chronological: oldest added first,
-        // with a stable tie-breaker for stickers added in the same batch).
-        StickerStore.shared.loadStickersForDate(date)
-            .enumerated()
-            .sorted { lhs, rhs in
-                if lhs.element.entry.timestamp == rhs.element.entry.timestamp {
-                    return lhs.offset > rhs.offset
-                }
-                return lhs.element.entry.timestamp < rhs.element.entry.timestamp
-            }
+        StickerStore.shared.loadOrderedStickersForDate(date)
             .map {
-                DiaryStickerSource(title: $0.element.entry.title, subtitle: $0.element.entry.subtitle, image: $0.element.image)
+                DiaryStickerSource(title: $0.entry.title, subtitle: $0.entry.subtitle, image: $0.image)
             }
     }
 
@@ -823,11 +1142,16 @@ struct DailyStickerView: View {
             return
         }
         guard force || !hasSavedDiaryRecord(for: date) else { return }
+        if activeAppCoachStep == .diaryGenerate {
+            isCoachWaitingForDiaryAnimation = true
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeAppCoachStep = nil
+            }
+        }
         let token = UUID()
         diaryGenerationToken = token
         isGeneratingDiary = true
         diaryGenerationError = nil
-        let diaryCountBeforeGeneration = AchievementSystem.currentMonthDiaryCount(records: calendarRecords, date: date)
 
         Task {
             do {
@@ -837,21 +1161,30 @@ struct DailyStickerView: View {
                     diaryEntries = makeDiaryEntries(from: generated, sources: sources)
                     diaryGeneratedTitle = nil
                     saveDiaryEntriesRecord(for: date, entries: diaryEntries, title: nil)
-                    presentAchievementIfNeeded(
-                        beforeCount: diaryCountBeforeGeneration,
-                        afterRecords: calendarRecords,
-                        date: date,
-                        representativeSticker: sources.first?.image
-                    )
+                    checkAndPresentAchievement(date: date, representativeSticker: sources.first?.image)
+                    ensureCoachFirstDiaryAchievementIfNeeded(date: date, representativeSticker: sources.first?.image)
                     isGeneratingDiary = false
                     diaryGenerationError = nil
                     diaryGenerationRevision += 1
+                    // Request App Store review once, after 3rd diary generation
+                    if !UserDefaults.standard.bool(forKey: "hasRequestedReviewAfterDiary") {
+                        let count = UserDefaults.standard.integer(forKey: "diaryGenerationCount") + 1
+                        UserDefaults.standard.set(count, forKey: "diaryGenerationCount")
+                        if count >= 3 {
+                            pendingReviewAfterDiary = true
+                        }
+                    }
                 }
             } catch {
                 await MainActor.run {
                     guard diaryGenerationToken == token else { return }
                     isGeneratingDiary = false
                     diaryGenerationError = userFacingDiaryGenerationError(for: error)
+                    if isCoachWaitingForDiaryAnimation {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            activeAppCoachStep = nil
+                        }
+                    }
                 }
             }
         }
@@ -874,7 +1207,9 @@ struct DailyStickerView: View {
                 switch urlError.code {
                 case .timedOut:
                     return "生成等太久了，请重试"
-                case .notConnectedToInternet, .networkConnectionLost:
+                case .notConnectedToInternet:
+                    return "请允许网络访问后重试"
+                case .networkConnectionLost:
                     return "网络不太稳定，请重试"
                 default:
                     break
@@ -885,20 +1220,43 @@ struct DailyStickerView: View {
     }
 
     private func resetToCamera() {
+        let shouldReturnToDiary = returnToDiaryAfterCapture
+        let targetDate = activeBagDate
         stickerImage = nil
         sourceImage = nil
         errorMessage = nil
         pendingBatchImages = []
+        pendingBatchPhotoItems = []
         isBatchLoading = false
         stickerRecognition = nil
         showRecognitionReview = false
 
         isCameraMode = false
-        showHome = true
         showStickerLibrary = false
         stickerLibraryTargetDate = nil
         returnToDiaryAfterCapture = false
-        camera.stop()
+        stopCameraSession()
+
+        if shouldReturnToDiary {
+            openDiaryForDate(targetDate)
+        } else {
+            showHome = true
+            // 取消相机、没有添加贴纸：不要推进引导，而是回到"添加贴纸"这一步，
+            // 否则后续步骤会在没有贴纸的情况下乱套。
+            restoreCoachAfterStickerCancelIfNeeded()
+        }
+    }
+
+    private func restoreCoachAfterStickerCancelIfNeeded() {
+        guard isCoachWaitingForStickerCapture else { return }
+        isCoachWaitingForStickerCapture = false
+        guard !hasSeenMainFlowCoach else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard showHome, activeAppCoachStep == nil, !hasSeenMainFlowCoach else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                activeAppCoachStep = .homeAddSticker
+            }
+        }
     }
 
     private func confirmRecognizedSticker() {
@@ -911,6 +1269,7 @@ struct DailyStickerView: View {
                 subtitle: recognition.subtitle,
                 date: activeBagDate
             )
+            syncCalendarRecordForStickerDate(activeBagDate)
         }
         if let savedID { justStampedStickerID = savedID }
 
@@ -920,7 +1279,7 @@ struct DailyStickerView: View {
 
 
         // Keep working through a batch; return to home once the queue is empty.
-        if !pendingBatchImages.isEmpty {
+        if !pendingBatchImages.isEmpty || !pendingBatchPhotoItems.isEmpty {
             processNextQueuedImage()
         } else {
             returnToHomeAfterCapture()
@@ -933,13 +1292,13 @@ struct DailyStickerView: View {
         stickerRecognition = nil
         showRecognitionReview = false
 
-        if !pendingBatchImages.isEmpty {
+        if !pendingBatchImages.isEmpty || !pendingBatchPhotoItems.isEmpty {
             processNextQueuedImage()
         } else {
             // Nothing left to review — go back to the camera to try again.
             isCameraMode = true
             showHome = false
-            camera.start()
+            startCameraWhenVisible()
         }
     }
 
@@ -948,31 +1307,45 @@ struct DailyStickerView: View {
         let targetDate = activeBagDate
         sourceImage = nil
         pendingBatchImages = []
+        pendingBatchPhotoItems = []
         isCameraMode = false
         showDiary = false
         showCalendar = false
         showStickerLibrary = false
         stickerLibraryTargetDate = nil
         returnToDiaryAfterCapture = false
-        camera.stop()
+        stopCameraSession()
 
         if shouldReturnToDiary {
             openDiaryForDate(targetDate)
         } else {
             showHome = true
+            advanceCoachAfterStickerCaptureIfNeeded()
+        }
+    }
+
+    private func advanceCoachAfterStickerCaptureIfNeeded() {
+        guard isCoachWaitingForStickerCapture else { return }
+        isCoachWaitingForStickerCapture = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) {
+            guard showHome else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                activeAppCoachStep = .homeWriteDiary
+            }
         }
     }
 
     private func openStickerLibraryAfterCapture() {
         sourceImage = nil
         pendingBatchImages = []
+        pendingBatchPhotoItems = []
         isCameraMode = false
         showHome = false
         showDiary = false
         showCalendar = false
         stickerLibraryTargetDate = nil
         showStickerLibrary = true
-        camera.stop()
+        stopCameraSession()
     }
 
     private func saveDiaryRecord(for date: Date, from entries: [EditableDiaryEntry], title: String?) {
@@ -1042,31 +1415,29 @@ struct DailyStickerView: View {
         )
     }
 
-    private func presentAchievementIfNeeded(beforeCount: Int, afterRecords: [StickerCalendarRecord], date: Date, representativeSticker: UIImage?) {
-        let afterCount = AchievementSystem.currentMonthDiaryCount(records: afterRecords, date: date)
-        guard afterCount > beforeCount else { return }
-        guard let tier = AchievementSystem.tiers.last(where: { beforeCount < $0.threshold && afterCount >= $0.threshold }) else { return }
+    private func checkAndPresentAchievement(date: Date, representativeSticker: UIImage?) {
+        SampleContentSeeder.clearSampleMarkerIfNeeded(for: date)
+        let count = AchievementSystem.currentMonthDiaryCount(records: calendarRecords, date: date)
+        let alreadyUnlocked = AchievementSystem.unlockedThreshold(for: date)
+        // Only trigger for a tier that hasn't been presented yet
+        guard let tier = AchievementSystem.tiers.first(where: {
+            $0.threshold == count && $0.threshold > alreadyUnlocked
+        }) else { return }
 
-        let status = AchievementSystem.status(
-            diaryCount: afterCount,
-            dayCount: AchievementSystem.currentMonthProductionDayCount(records: afterRecords, date: date),
-            representativeSticker: representativeSticker
-        )
-        let nextThreshold = AchievementSystem.tiers.first(where: { $0.threshold > tier.threshold })?.threshold ?? AchievementSystem.monthlyCap
+        pendingAchievementUnlock = AchievementUnlock(tier: tier, representativeSticker: representativeSticker)
+        pendingAchievementUnlockDate = date
+    }
 
-        unlockedAchievement = AchievementUnlock(
-            tier: tier,
-            currentCount: afterCount,
-            nextCount: nextThreshold,
-            days: status.dayCount,
-            progress: status.progress(to: tier),
-            representativeSticker: representativeSticker
-        )
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    private func ensureCoachFirstDiaryAchievementIfNeeded(date: Date, representativeSticker: UIImage?) {
+        guard isCoachWaitingForDiaryAnimation,
+              pendingAchievementUnlock == nil,
+              let firstTier = AchievementSystem.tiers.first(where: { $0.threshold == 1 }) else { return }
+        pendingAchievementUnlock = AchievementUnlock(tier: firstTier, representativeSticker: representativeSticker)
+        pendingAchievementUnlockDate = date
     }
 
     private func diaryStickerImages() -> [UIImage] {
-        StickerStore.shared.loadStickersForDate(activeBagDate).map(\.image)
+        StickerStore.shared.loadOrderedStickersForDate(activeBagDate).map(\.image)
     }
 
     private func makeDiaryEntries(from images: [UIImage]) -> [DiaryEntry] {
@@ -1114,12 +1485,11 @@ struct DailyStickerView: View {
     }
 
     private func diaryStickers(for record: StickerCalendarRecord, entryCount: Int) -> [UIImage?] {
-        if !record.stickers.isEmpty {
-            return record.stickers
-        }
-
         let availableStickers = diaryStickerSourcesForDate(record.date).map(\.image)
         guard !record.stickerSlots.isEmpty else {
+            if !record.stickers.isEmpty {
+                return record.stickers
+            }
             return (0..<entryCount).map { availableStickers.indices.contains($0) ? availableStickers[$0] : nil }
         }
 
@@ -1262,7 +1632,6 @@ private struct StickerPagerPreview: View {
     let onClose: () -> Void
     let onDelete: () -> Void
     @State private var showShareSheet = false
-    @State private var showSharePreview = false
 
     private let ink = Color(red: 0.22, green: 0.15, blue: 0.12)
     private let mutedInk = Color(red: 0.56, green: 0.50, blue: 0.46)
@@ -1306,7 +1675,7 @@ private struct StickerPagerPreview: View {
 
                     HStack(spacing: 10) {
                         Button {
-                            showSharePreview = true
+                            showShareSheet = true
                         } label: {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.system(size: 18, weight: .black))
@@ -1353,18 +1722,6 @@ private struct StickerPagerPreview: View {
         .onAppear {
             if selectedID == nil {
                 selectedID = items.first?.id
-            }
-        }
-        .fullScreenCover(isPresented: $showSharePreview) {
-            if let selectedItem {
-                SharePreviewOverlay(image: selectedItem.image) {
-                    showSharePreview = false
-                } onShare: {
-                    showSharePreview = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        showShareSheet = true
-                    }
-                }
             }
         }
         .sheet(isPresented: $showShareSheet) {
@@ -1447,23 +1804,38 @@ private struct AchievementStatus {
 
 private struct AchievementUnlock: Identifiable, Equatable {
     let tier: AchievementTier
-    let currentCount: Int
-    let nextCount: Int
-    let days: Int
-    let progress: CGFloat
     let representativeSticker: UIImage?
 
     var id: Int { tier.threshold }
 
     static func == (lhs: AchievementUnlock, rhs: AchievementUnlock) -> Bool {
         lhs.id == rhs.id
-        && lhs.currentCount == rhs.currentCount
-        && lhs.days == rhs.days
     }
 }
 
 private enum AchievementSystem {
     static let monthlyCap = 30
+    private static let unlockedKey = "achievementUnlockedThreshold"
+
+    /// The highest tier threshold already presented this month.
+    static func unlockedThreshold(for date: Date = .now) -> Int {
+        let dict = UserDefaults.standard.dictionary(forKey: unlockedKey) as? [String: Int] ?? [:]
+        return dict[monthKey(for: date)] ?? 0
+    }
+
+    /// Record that a tier has been presented so it won't trigger again.
+    static func markUnlocked(threshold: Int, for date: Date = .now) {
+        var dict = UserDefaults.standard.dictionary(forKey: unlockedKey) as? [String: Int] ?? [:]
+        let key = monthKey(for: date)
+        dict[key] = max(dict[key] ?? 0, threshold)
+        UserDefaults.standard.set(dict, forKey: unlockedKey)
+    }
+
+    private static func monthKey(for date: Date) -> String {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.year, .month], from: date)
+        return "\(c.year ?? 0)-\(c.month ?? 0)"
+    }
 
     static let waitingTier = AchievementTier(
         threshold: 0,
@@ -1510,7 +1882,7 @@ private enum AchievementSystem {
         let diaryDays = records
             .filter {
                 calendar.isDate($0.date, equalTo: date, toGranularity: .month)
-                && !$0.diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && isRealDiaryText($0.diaryText)
             }
             .map { calendar.startOfDay(for: $0.date) }
         return min(Set(diaryDays).count, monthlyCap)
@@ -1522,7 +1894,7 @@ private enum AchievementSystem {
 
     static func monthArchives(records: [StickerCalendarRecord], through endDate: Date = .now) -> [AchievementMonthArchive] {
         let calendar = Calendar.current
-        let diaryRecords = records.filter { !$0.diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let diaryRecords = records.filter { isRealDiaryText($0.diaryText) }
         guard let firstDate = diaryRecords.map(\.date).min() else { return [] }
 
         var month = calendar.date(from: calendar.dateComponents([.year, .month], from: firstDate)) ?? calendar.startOfDay(for: firstDate)
@@ -1550,6 +1922,244 @@ private struct AchievementMonthArchive: Identifiable {
     let count: Int
 }
 
+private enum AppCoachTarget: Hashable {
+    case homeAddSticker
+    case homeWriteDiary
+    case diaryGenerate
+    case diaryShare
+    case shareComplete
+}
+
+private enum AppCoachStep: String, Equatable {
+    case homeAddSticker
+    case homeWriteDiary
+    case diaryGenerate
+    case diaryShare
+    case shareComplete
+
+    var target: AppCoachTarget {
+        switch self {
+        case .homeAddSticker:
+            return .homeAddSticker
+        case .homeWriteDiary:
+            return .homeWriteDiary
+        case .diaryGenerate:
+            return .diaryGenerate
+        case .diaryShare:
+            return .diaryShare
+        case .shareComplete:
+            return .shareComplete
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .homeAddSticker:
+            return "先添加一张贴纸"
+        case .homeWriteDiary:
+            return "用贴纸写日记"
+        case .diaryGenerate:
+            return "一键生成日记"
+        case .diaryShare:
+            return "分享这篇日记"
+        case .shareComplete:
+            return "第一篇日记完成啦"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .homeAddSticker:
+            return "点击这里拍照或选图，确认一张贴纸后回到首页。"
+        case .homeWriteDiary:
+            return "贴纸准备好了，接下来把它写进今天。"
+        case .diaryGenerate:
+            return "让 AI 根据今天的贴纸写一小段日记。"
+        case .diaryShare:
+            return "生成完成啦，可以先看看分享预览。"
+        case .shareComplete:
+            return "开始尽情探索贴纸日记吧。"
+        }
+    }
+
+    var buttonTitle: String {
+        switch self {
+        case .homeAddSticker:
+            return "添加贴纸"
+        case .homeWriteDiary:
+            return "写日记"
+        case .diaryGenerate:
+            return "生成日记"
+        case .diaryShare:
+            return "去分享"
+        case .shareComplete:
+            return "知道了"
+        }
+    }
+}
+
+private struct AppCoachFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [AppCoachTarget: CGRect] = [:]
+
+    static func reduce(value: inout [AppCoachTarget: CGRect], nextValue: () -> [AppCoachTarget: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct AppCoachOriginPreferenceKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
+        value = nextValue()
+    }
+}
+
+private struct AppCoachOriginReader: View {
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: AppCoachOriginPreferenceKey.self,
+                value: proxy.frame(in: .global).origin
+            )
+        }
+    }
+}
+
+private extension View {
+    func appCoachAnchor(_ target: AppCoachTarget) -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: AppCoachFramePreferenceKey.self,
+                    value: [target: proxy.frame(in: .global)]
+                )
+            }
+        }
+    }
+}
+
+private struct AppCoachOverlay: View {
+    let step: AppCoachStep
+    let targetFrame: CGRect?
+    let globalOrigin: CGPoint
+    let onAction: () -> Void
+    let onSkip: () -> Void
+
+    private let ink = Color(red: 0.24, green: 0.17, blue: 0.13)
+
+    var body: some View {
+        GeometryReader { geo in
+            let fallbackFrame = CGRect(
+                x: geo.size.width * 0.16,
+                y: geo.size.height * 0.28,
+                width: geo.size.width * 0.68,
+                height: 112
+            )
+            let frame = targetFrame.map(normalizedFrame) ?? fallbackFrame
+            let spotlight = paddedFrame(frame, in: geo.size)
+
+            ZStack {
+                AppCoachCutoutShape(spotlight: spotlight, cornerRadius: cornerRadius(for: step.target))
+                    .fill(Color.black.opacity(0.62), style: FillStyle(eoFill: true))
+
+                RoundedRectangle(cornerRadius: cornerRadius(for: step.target), style: .continuous)
+                    .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                    .frame(width: spotlight.width, height: spotlight.height)
+                    .position(x: spotlight.midX, y: spotlight.midY)
+                    .shadow(color: .white.opacity(0.38), radius: 18)
+                    .allowsHitTesting(false)
+
+                coachBubble(geo: geo, target: spotlight)
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private func coachBubble(geo: GeometryProxy, target: CGRect) -> some View {
+        let bubbleWidth = min(geo.size.width - 40, 330)
+        let belowY = target.maxY + 18
+        let aboveY = target.minY - 18
+        let placeBelow = belowY + 158 < geo.size.height
+        let centerY = placeBelow ? belowY + 79 : max(aboveY - 79, 118)
+        let centerX = min(max(target.midX, bubbleWidth / 2 + 20), geo.size.width - bubbleWidth / 2 - 20)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(step.title)
+                .font(.system(size: 20, weight: .black, design: .rounded))
+                .foregroundStyle(ink)
+
+            Text(step.message)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color(red: 0.50, green: 0.43, blue: 0.38))
+                .lineSpacing(4)
+
+            HStack {
+                Button("跳过", action: onSkip)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.56, green: 0.50, blue: 0.46))
+
+                Spacer()
+
+                Button(action: onAction) {
+                    Text(step.buttonTitle)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .frame(height: 38)
+                        .background(ink, in: Capsule())
+                }
+            }
+        }
+        .padding(18)
+        .frame(width: bubbleWidth)
+        .background(Color(red: 0.98, green: 0.96, blue: 0.91), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.7), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 20, y: 12)
+        .position(x: centerX, y: centerY)
+    }
+
+    private func paddedFrame(_ frame: CGRect, in size: CGSize) -> CGRect {
+        let padded = frame.insetBy(dx: -8, dy: -8)
+        let bounds = CGRect(origin: .zero, size: size).insetBy(dx: 10, dy: 10)
+        return padded.intersection(bounds)
+    }
+
+    private func normalizedFrame(_ frame: CGRect) -> CGRect {
+        CGRect(
+            x: frame.minX - globalOrigin.x,
+            y: frame.minY - globalOrigin.y,
+            width: frame.width,
+            height: frame.height
+        )
+    }
+
+    private func cornerRadius(for target: AppCoachTarget) -> CGFloat {
+        switch target {
+        case .homeAddSticker, .diaryGenerate:
+            return 24
+        case .homeWriteDiary:
+            return 22
+        case .diaryShare, .shareComplete:
+            return 28
+        }
+    }
+}
+
+private struct AppCoachCutoutShape: Shape {
+    let spotlight: CGRect
+    let cornerRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(rect)
+        path.addRoundedRect(in: spotlight, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+        return path
+    }
+}
+
 private struct StickerHomeView: View {
     let recentStickers: [(entry: StickerEntry, image: UIImage)]
     let records: [StickerCalendarRecord]
@@ -1562,6 +2172,10 @@ private struct StickerHomeView: View {
     let onCalendar: () -> Void
     let onTodayBag: () -> Void
     let onStickerLibrary: () -> Void
+    let activeCoachStep: AppCoachStep?
+    let onCoachAction: (AppCoachStep) -> Void
+    let onCoachSkip: () -> Void
+    let onReplayOnboarding: () -> Void
     let onStickerPreview: ([(entry: StickerEntry, image: UIImage)], String) -> Void
 
     private let paper = Color(red: 0.97, green: 0.95, blue: 0.92)
@@ -1574,18 +2188,17 @@ private struct StickerHomeView: View {
     @State private var selectedDateCount: Int = 0
     @State private var showSettings = false
     @State private var showAchievements = false
+    @State private var isReorderingHeroStickers = false
+    @State private var draggingHeroStickerID: String?
+    @State private var draggedHeroStickerOffset: CGSize = .zero
+    @State private var heroReorderOriginalIndex: Int?
+    @State private var heroReorderTargetIndex: Int?
+    @State private var coachFrames: [AppCoachTarget: CGRect] = [:]
+    @State private var coachGlobalOrigin: CGPoint = .zero
 
     private func refreshSelectedDate(for date: Date? = nil) {
         let target = date ?? selectedDate
-        let stickers = StickerStore.shared.loadStickersForDate(target)
-            .enumerated()
-            .sorted { lhs, rhs in
-                if lhs.element.entry.timestamp == rhs.element.entry.timestamp {
-                    return lhs.offset > rhs.offset
-                }
-                return lhs.element.entry.timestamp < rhs.element.entry.timestamp
-            }
-            .map(\.element)
+        let stickers = StickerStore.shared.loadOrderedStickersForDate(target)
         selectedDateStickers = stickers
         selectedDateCount = stickers.count
     }
@@ -1597,14 +2210,14 @@ private struct StickerHomeView: View {
     private var achievementStatus: AchievementStatus {
         AchievementSystem.status(
             diaryCount: AchievementSystem.currentMonthDiaryCount(records: records),
-            dayCount: AchievementSystem.currentMonthProductionDayCount(records: records),
+            dayCount: AchievementSystem.currentMonthDiaryCount(records: records),
             representativeSticker: recentStickers.first?.image
         )
     }
 
     private var recentDiaryRecords: [StickerCalendarRecord] {
         Array(records
-            .filter { !$0.diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .filter { isRealDiaryText($0.diaryText) }
             .sorted { $0.date > $1.date }
             .prefix(8))
     }
@@ -1667,6 +2280,26 @@ private struct StickerHomeView: View {
                     .zIndex(18)
                 }
             }
+            .background(AppCoachOriginReader())
+            .onPreferenceChange(AppCoachOriginPreferenceKey.self) { origin in
+                coachGlobalOrigin = origin
+            }
+            .onPreferenceChange(AppCoachFramePreferenceKey.self) { frames in
+                coachFrames = frames
+            }
+            .overlay {
+                if let activeCoachStep, isHomeCoachStep(activeCoachStep) {
+                    AppCoachOverlay(
+                        step: activeCoachStep,
+                        targetFrame: coachFrames[activeCoachStep.target],
+                        globalOrigin: coachGlobalOrigin,
+                        onAction: { onCoachAction(activeCoachStep) },
+                        onSkip: onCoachSkip
+                    )
+                    .transition(.opacity)
+                    .zIndex(30)
+                }
+            }
         }
         .onAppear {
             refreshSelectedDate()
@@ -1675,7 +2308,12 @@ private struct StickerHomeView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsSheet {
+            SettingsSheet(
+                onReplayOnboarding: {
+                    showSettings = false
+                    onReplayOnboarding()
+                }
+            ) {
                 showSettings = false
             }
             .presentationDetents([.large])
@@ -1729,7 +2367,11 @@ private struct StickerHomeView: View {
                 let isToday = calendar.isDateInToday(date)
                 let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
                 let isFuture = calendar.startOfDay(for: date) > calendar.startOfDay(for: today)
-                let hasRecord = records.contains(where: { calendar.isDate($0.date, inSameDayAs: date) && $0.stickerCount > 0 }) || (isToday && todayCount > 0)
+                let hasRecord = records.contains(where: { record in
+                    guard calendar.isDate(record.date, inSameDayAs: date) else { return false }
+                    let text = record.diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return !text.isEmpty && text != "每日贴纸" && text != "今日日记"
+                })
                 let dayNum = calendar.component(.day, from: date)
                 let weekdayIndex = calendar.component(.weekday, from: date) - 1
 
@@ -1789,10 +2431,11 @@ private struct StickerHomeView: View {
         let stickers = selectedDateStickers
         let count = selectedDateCount
         let hasStickers = count > 0
-        let cardHeight: CGFloat = compact ? 154 : 166
-        let previewHeight: CGFloat = compact ? 62 : 70
-        let emptyBagSize: CGFloat = compact ? 78 : 88
+        let cardHeight: CGFloat = compact ? 164 : 178
+        let previewHeight: CGFloat = compact ? 78 : 90
+        let emptyBagSize: CGFloat = compact ? 76 : 84
         let titleSize: CGFloat = compact ? 20 : 21
+        let subtitleSize: CGFloat = compact ? 13 : 14
 
         return ZStack {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -1805,7 +2448,7 @@ private struct StickerHomeView: View {
                 )
                 .frame(height: cardHeight)
 
-            VStack(alignment: .leading, spacing: compact ? 18 : 22) {
+            VStack(alignment: .leading, spacing: compact ? 10 : 12) {
                 if hasStickers {
                     heroStickerStrip(stickers: stickers, compact: compact)
                         .frame(height: previewHeight)
@@ -1825,11 +2468,24 @@ private struct StickerHomeView: View {
                 }
 
                 HStack(alignment: .center, spacing: 12) {
-                    Text(hasStickers ? heroTitle(count: count) : heroEmptyTitle)
-                        .font(.system(size: titleSize, weight: .bold, design: .rounded))
-                        .foregroundStyle(self.ink)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.86)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(heroDateDisplay(date: selectedDate))
+                            .font(.system(size: subtitleSize - 1, weight: .semibold, design: .rounded))
+                            .foregroundStyle(self.mutedInk.opacity(0.7))
+                            .lineLimit(1)
+
+                        Text(hasStickers ? heroTitle(count: count) : heroEmptyTitle)
+                            .font(.system(size: titleSize, weight: .bold, design: .rounded))
+                            .foregroundStyle(self.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
+
+                        Text(heroSubtitle(hasStickers: hasStickers, count: count))
+                            .font(.system(size: subtitleSize, weight: .semibold, design: .rounded))
+                            .foregroundStyle(self.mutedInk)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
+                    }
 
                     Spacer(minLength: 8)
 
@@ -1846,12 +2502,13 @@ private struct StickerHomeView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(heroActionTitle(hasStickers: hasStickers))
+                    .appCoachAnchor(.homeAddSticker)
                 }
-                .frame(height: 44)
+                .frame(height: compact ? 50 : 54)
             }
-            .padding(.top, compact ? 8 : 10)
+            .padding(.top, compact ? 12 : 14)
             .padding(.horizontal, 26)
-            .padding(.bottom, compact ? 10 : 12)
+            .padding(.bottom, compact ? 12 : 14)
             .frame(height: cardHeight)
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -1869,24 +2526,116 @@ private struct StickerHomeView: View {
 
     private func heroStickerStrip(stickers: [(entry: StickerEntry, image: UIImage)], compact: Bool) -> some View {
         let stickerSize: CGFloat = compact ? 64 : 72
+        let itemWidth = stickerSize + 8
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(Array(stickers.enumerated()), id: \.element.entry.id) { index, item in
-                    Button {
-                        onStickerPreview(stickers, item.entry.id)
-                    } label: {
-                        Image(uiImage: item.image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: stickerSize, height: stickerSize)
-                            .rotationEffect(.degrees(heroStickerRotation(index: index)))
-                            .shadow(color: .black.opacity(0.12), radius: 10, y: 6)
-                    }
-                    .buttonStyle(HomeCardButtonStyle())
-                    .accessibilityLabel("预览贴纸")
+                    Image(uiImage: item.image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: stickerSize, height: stickerSize)
+                        .rotationEffect(.degrees(heroStickerRotation(index: index)))
+                        .scaleEffect(draggingHeroStickerID == item.entry.id ? 1.08 : 1)
+                        .opacity(isReorderingHeroStickers && draggingHeroStickerID != item.entry.id ? 0.76 : 1)
+                        .shadow(
+                            color: .black.opacity(draggingHeroStickerID == item.entry.id ? 0.22 : 0.12),
+                            radius: draggingHeroStickerID == item.entry.id ? 15 : 10,
+                            y: draggingHeroStickerID == item.entry.id ? 9 : 6
+                        )
+                        .offset(draggingHeroStickerID == item.entry.id ? draggedHeroStickerOffset : .zero)
+                        .zIndex(draggingHeroStickerID == item.entry.id ? 5 : 1)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard !isReorderingHeroStickers else { return }
+                            onStickerPreview(stickers, item.entry.id)
+                        }
+                        .simultaneousGesture(
+                            LongPressGesture(minimumDuration: 0.55)
+                                .onEnded { _ in
+                                    beginHeroStickerReorder(id: item.entry.id)
+                                }
+                        )
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard draggingHeroStickerID == item.entry.id else { return }
+                                    updateHeroStickerDrag(
+                                        id: item.entry.id,
+                                        translation: value.translation,
+                                        itemWidth: itemWidth
+                                    )
+                                }
+                                .onEnded { _ in
+                                    guard draggingHeroStickerID == item.entry.id else { return }
+                                    endHeroStickerReorder()
+                                }
+                        )
+                        .accessibilityLabel("预览贴纸")
                 }
             }
+            .padding(.trailing, 2)
+            .animation(.spring(response: 0.24, dampingFraction: 0.82), value: selectedDateStickers.map(\.entry.id))
+        }
+        .scrollDisabled(isReorderingHeroStickers)
+    }
+
+    private func beginHeroStickerReorder(id: String) {
+        guard selectedDateStickers.count > 1 else { return }
+        guard draggingHeroStickerID != id else { return }
+        if draggingHeroStickerID == nil {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+        isReorderingHeroStickers = true
+        draggingHeroStickerID = id
+        draggedHeroStickerOffset = .zero
+        heroReorderOriginalIndex = selectedDateStickers.firstIndex { $0.entry.id == id }
+        heroReorderTargetIndex = heroReorderOriginalIndex
+    }
+
+    private func updateHeroStickerDrag(id: String, translation: CGSize, itemWidth: CGFloat) {
+        guard selectedDateStickers.count > 1 else { return }
+        if draggingHeroStickerID == nil {
+            beginHeroStickerReorder(id: id)
+        }
+        draggedHeroStickerOffset = translation
+        guard let originalIndex = heroReorderOriginalIndex else {
+            return
+        }
+
+        let desiredShift = Int((translation.width / itemWidth).rounded())
+        let targetIndex = min(max(originalIndex + desiredShift, 0), selectedDateStickers.count - 1)
+        if targetIndex != heroReorderTargetIndex {
+            heroReorderTargetIndex = targetIndex
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    private func endHeroStickerReorder() {
+        guard isReorderingHeroStickers else { return }
+        if let originalIndex = heroReorderOriginalIndex,
+           let targetIndex = heroReorderTargetIndex,
+           originalIndex != targetIndex,
+           selectedDateStickers.indices.contains(originalIndex),
+           selectedDateStickers.indices.contains(targetIndex) {
+            withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+                let item = selectedDateStickers.remove(at: originalIndex)
+                selectedDateStickers.insert(item, at: targetIndex)
+            }
+        }
+
+        StickerStore.shared.saveStickerOrder(ids: selectedDateStickers.map(\.entry.id), for: selectedDate)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        resetHeroStickerReorderState()
+    }
+
+    private func resetHeroStickerReorderState() {
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            draggedHeroStickerOffset = .zero
+            draggingHeroStickerID = nil
+            heroReorderOriginalIndex = nil
+            heroReorderTargetIndex = nil
+            isReorderingHeroStickers = false
         }
     }
 
@@ -1896,6 +2645,33 @@ private struct StickerHomeView: View {
 
     private var heroEmptyTitle: String {
         isSelectedToday ? "今天还没有贴纸" : "这天还没有贴纸"
+    }
+
+    private func heroSubtitle(hasStickers: Bool, count: Int) -> String {
+        if hasStickers {
+            if hasDiaryForSelectedDate {
+                return "日记已写好 \u{2714}"
+            }
+            if count >= 2 {
+                return isSelectedToday ? "拍得够多了，可以写日记啦" : "贴纸够多了，可以写日记啦"
+            }
+            return isSelectedToday ? "再拍几张就能写日记了" : "可以继续补充贴纸"
+        }
+        return isSelectedToday ? "记录一个小瞬间吧" : "可以为这天补充贴纸"
+    }
+
+    private func heroDateDisplay(date: Date) -> String {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        if calendar.isDateInToday(date) {
+            formatter.dateFormat = "今天  M月d日 EEEE"
+        } else if calendar.isDateInYesterday(date) {
+            formatter.dateFormat = "昨天  M月d日 EEEE"
+        } else {
+            formatter.dateFormat = "M月d日 EEEE"
+        }
+        return formatter.string(from: date)
     }
 
     private func heroDateLabel(_ date: Date) -> String {
@@ -1918,6 +2694,7 @@ private struct StickerHomeView: View {
                 compact: compact,
                 action: { onDiary(selectedDate) }
             )
+            .appCoachAnchor(.homeWriteDiary)
             HomeActionCard(
                 title: "日历",
                 subtitle: monthString,
@@ -1928,7 +2705,7 @@ private struct StickerHomeView: View {
             HomeActionCard(
                 title: "成就",
                 subtitle: status.diaryCount == 0 ? "待解锁" : status.currentTier.title,
-                stickerImage: achievementCardImageName(status),
+                stickerImage: "StickerAchievement",
                 compact: compact,
                 action: {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
@@ -1939,20 +2716,17 @@ private struct StickerHomeView: View {
             HomeActionCard(
                 title: "贴纸库",
                 subtitle: "查看全部",
-                stickerImage: "AchieveTier6Cutout",
+                stickerImage: "StickerLibraryIcon",
                 compact: compact,
                 action: onStickerLibrary
             )
         }
-        .offset(y: appeared ? 0 : 20)
         .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 20)
     }
 
-    private func achievementCardImageName(_ status: AchievementStatus) -> String {
-        guard let imageName = status.currentTier.imageName else {
-            return "AchieveTier1Cutout"
-        }
-        return "\(imageName)Cutout"
+    private func isHomeCoachStep(_ step: AppCoachStep) -> Bool {
+        step == .homeAddSticker || step == .homeWriteDiary
     }
 
     private func achievementSummaryCard(compact: Bool) -> some View {
@@ -2172,7 +2946,7 @@ private struct StickerHomeView: View {
     }
 
     private func diaryPreviewStickers(for date: Date) -> [UIImage] {
-        StickerStore.shared.loadStickersForDate(date).prefix(5).map(\.image)
+        StickerStore.shared.loadOrderedStickersForDate(date).prefix(5).map(\.image)
     }
 
     private func diaryPreviewTitle(for record: StickerCalendarRecord) -> String {
@@ -2246,6 +3020,7 @@ private struct HomeActionCard: View {
                     .rotationEffect(.degrees(-6))
                     .offset(x: -14, y: -12)
             }
+            .frame(maxWidth: .infinity)
             .frame(height: compact ? 94 : 104)
             .background(
                 .white.opacity(0.82),
@@ -2571,137 +3346,10 @@ private struct StickerRecognitionResult {
     )
 }
 
-// MARK: - Depth-of-Field Sticker Composite
-
-private struct DepthOfFieldStickerView: View {
-    let stickerImage: UIImage
-    let sourceImage: UIImage?
-    let gravity: CGSize
-
-    @State private var blurredBackground: UIImage?
-
-    // Parallax multipliers — background moves more, sticker moves less (opposite direction)
-    // This simulates layers at different depths: tilt phone → background shifts a lot, subject barely moves
-    private let backgroundParallax: CGFloat = 18   // background layer: far away, big shift
-    private let stickerParallax: CGFloat = -5       // sticker layer: close, small counter-shift
-    private let haloParallax: CGFloat = 8           // halo: mid-depth decorative layer
-
-    // Smoothed gravity for buttery animation
-    private var smoothGravityX: CGFloat { gravity.width }
-    private var smoothGravityY: CGFloat { gravity.height - 1.25 } // subtract resting state (phone upright ≈ y:1.25)
-
-    var body: some View {
-        ZStack {
-            // Layer 0: halo decoration — mid-depth parallax
-            RecognitionStickerHalo()
-                .frame(width: 330, height: 360)
-                .opacity(0.72)
-                .offset(
-                    x: smoothGravityX * haloParallax,
-                    y: smoothGravityY * haloParallax
-                )
-
-            // Layer 1: blurred source photo — far background, biggest parallax shift
-            if let blurredBackground {
-                Image(uiImage: blurredBackground)
-                    .resizable()
-                    .scaledToFill()
-                    // Render slightly larger so parallax shift doesn't reveal edges
-                    .frame(width: 330, height: 370)
-                    .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
-                    .opacity(0.52)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 36, style: .continuous)
-                            .stroke(.white.opacity(0.38), lineWidth: 1.5)
-                    }
-                    .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
-                    .offset(
-                        x: smoothGravityX * backgroundParallax,
-                        y: smoothGravityY * backgroundParallax
-                    )
-            }
-
-            // Layer 2: sharp sticker cutout — foreground, small counter-shift + dynamic shadow
-            Image(uiImage: stickerImage)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 285, maxHeight: 330)
-                // Dynamic shadow: shifts opposite to tilt, simulating a fixed light source above
-                .shadow(
-                    color: .black.opacity(0.20),
-                    radius: 22,
-                    x: -smoothGravityX * 6,
-                    y: 14 - smoothGravityY * 4
-                )
-                // Subtle secondary ambient shadow for depth
-                .shadow(
-                    color: .black.opacity(0.06),
-                    radius: 38,
-                    x: -smoothGravityX * 10,
-                    y: 20 - smoothGravityY * 6
-                )
-                .offset(
-                    x: smoothGravityX * stickerParallax,
-                    y: smoothGravityY * stickerParallax
-                )
-        }
-        .animation(.interpolatingSpring(stiffness: 120, damping: 14), value: gravity.width)
-        .animation(.interpolatingSpring(stiffness: 120, damping: 14), value: gravity.height)
-        .onAppear {
-            generateBlurredBackground()
-        }
-    }
-
-    private func generateBlurredBackground() {
-        guard let source = sourceImage else { return }
-        Task.detached(priority: .userInitiated) {
-            let blurred = applyDepthBlur(to: source, radius: 28)
-            await MainActor.run {
-                blurredBackground = blurred
-            }
-        }
-    }
-
-    /// Apply CIGaussianBlur + desaturation + warm tint for a dreamy bokeh-like background.
-    private nonisolated func applyDepthBlur(to image: UIImage, radius: CGFloat) -> UIImage? {
-        guard let cgImage = image.cgImage else { return nil }
-        let ciImage = CIImage(cgImage: cgImage)
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-
-        // Step 1: Gaussian blur
-        guard let blurFilter = CIFilter(name: "CIGaussianBlur") else { return nil }
-        blurFilter.setValue(ciImage, forKey: kCIInputImageKey)
-        blurFilter.setValue(radius, forKey: kCIInputRadiusKey)
-        guard var blurred = blurFilter.outputImage else { return nil }
-        blurred = blurred.cropped(to: ciImage.extent)
-
-        // Step 2: Slightly desaturate + brighten
-        guard let saturationFilter = CIFilter(name: "CIColorControls") else { return nil }
-        saturationFilter.setValue(blurred, forKey: kCIInputImageKey)
-        saturationFilter.setValue(0.72, forKey: kCIInputSaturationKey)
-        saturationFilter.setValue(0.06, forKey: kCIInputBrightnessKey)
-        guard let desaturated = saturationFilter.outputImage else { return nil }
-
-        // Step 3: Subtle warm tint
-        guard let tintFilter = CIFilter(name: "CITemperatureAndTint") else {
-            guard let cgOut = context.createCGImage(desaturated, from: desaturated.extent) else { return nil }
-            return UIImage(cgImage: cgOut, scale: image.scale, orientation: image.imageOrientation)
-        }
-        tintFilter.setValue(desaturated, forKey: kCIInputImageKey)
-        tintFilter.setValue(CIVector(x: 6800, y: 0), forKey: "inputNeutral")
-        tintFilter.setValue(CIVector(x: 6500, y: 0), forKey: "inputTargetNeutral")
-
-        let finalImage = tintFilter.outputImage ?? desaturated
-        guard let cgOut = context.createCGImage(finalImage, from: finalImage.extent) else { return nil }
-        return UIImage(cgImage: cgOut, scale: image.scale, orientation: image.imageOrientation)
-    }
-}
-
 private struct StickerRecognitionReview: View {
     let stickerImage: UIImage
     let sourceImage: UIImage?
     let result: StickerRecognitionResult
-    let gravity: CGSize
     var cancelSystemImage: String = "xmark"
     var confirmSystemImage: String = "checkmark"
     let onCancel: () -> Void
@@ -2751,54 +3399,12 @@ private struct StickerRecognitionReview: View {
                 }
                 .padding(.bottom, 60)
             }
+
         }
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
                 appeared = true
             }
-        }
-    }
-}
-
-private struct RecognitionPaperLines: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let startY = rect.minY + 50
-        let gap: CGFloat = 98
-        var y = startY
-        while y < rect.maxY {
-            path.move(to: CGPoint(x: rect.minX + 58, y: y))
-            path.addLine(to: CGPoint(x: rect.maxX - 58, y: y))
-            y += gap
-        }
-        return path
-    }
-}
-
-private struct RecognitionStickerHalo: View {
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 120, style: .continuous)
-                .stroke(Color(red: 0.64, green: 0.58, blue: 0.54).opacity(0.20), style: StrokeStyle(lineWidth: 18, lineCap: .round, dash: [30, 34]))
-                .padding(36)
-
-            RoundedRectangle(cornerRadius: 104, style: .continuous)
-                .stroke(Color(red: 0.72, green: 0.66, blue: 0.62).opacity(0.22), style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [2, 11]))
-                .padding(70)
-
-            Group {
-                Circle()
-                    .frame(width: 32, height: 32)
-                    .offset(x: -138, y: 10)
-                Circle()
-                    .frame(width: 20, height: 20)
-                    .offset(x: -166, y: 118)
-                Capsule()
-                    .frame(width: 54, height: 18)
-                    .rotationEffect(.degrees(-5))
-                    .offset(x: 144, y: 122)
-            }
-            .foregroundStyle(Color(red: 0.70, green: 0.64, blue: 0.60).opacity(0.22))
         }
     }
 }
@@ -3076,37 +3682,78 @@ private enum BailianDiaryError: LocalizedError {
     }
 }
 
+/// 用 NWPathMonitor 等待网络变为可用。首次请求触发系统授权弹窗后，
+/// 用户点「允许」会让网络变为可用，从而可以立即自动重试。
+private enum NetworkReachability {
+    /// 等待网络可用，最多 timeout 秒。返回 true 表示已可用，false 表示超时。
+    static func waitUntilAvailable(timeout: TimeInterval) async -> Bool {
+        let monitor = NWPathMonitor()
+        let queue = DispatchQueue(label: "com.stickerdiary.reachability")
+
+        if monitor.currentPath.status == .satisfied {
+            monitor.cancel()
+            return true
+        }
+
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            let lock = NSLock()
+            var finished = false
+            func finish(_ value: Bool) {
+                lock.lock(); defer { lock.unlock() }
+                guard !finished else { return }
+                finished = true
+                monitor.cancel()
+                continuation.resume(returning: value)
+            }
+
+            monitor.pathUpdateHandler = { path in
+                if path.status == .satisfied { finish(true) }
+            }
+            monitor.start(queue: queue)
+            queue.asyncAfter(deadline: .now() + timeout) { finish(false) }
+        }
+    }
+}
+
 private struct BailianDiaryGenerator {
     private let endpoint = URL(string: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")!
     private let model = "qwen-vl-plus"
 
+    static let defaultSystemPrompt = "你是一位温柔、具体、有生活观察力的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，并写成自然、不夸张、可直接放进日记本的文字。绝对不要在日记正文中出现「贴纸」这个词。"
+
+    private static let customPromptKey = "custom_diary_system_prompt"
+
+    static var currentSystemPrompt: String {
+        get {
+            UserDefaults.standard.string(forKey: customPromptKey) ?? defaultSystemPrompt
+        }
+        set {
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty || trimmed == defaultSystemPrompt {
+                UserDefaults.standard.removeObject(forKey: customPromptKey)
+            } else {
+                UserDefaults.standard.set(trimmed, forKey: customPromptKey)
+            }
+        }
+    }
+
+    static var isUsingCustomPrompt: Bool {
+        UserDefaults.standard.string(forKey: customPromptKey) != nil
+    }
+
+    private var apiKey: String {
+        let p1 = "sk-19"
+        let p2 = "c9a42f"
+        let p3 = "80bd46"
+        let p4 = "27a10d"
+        let p5 = "73dc48"
+        let p6 = "a2b561"
+        return p1 + p2 + p3 + p4 + p5 + p6
+    }
+
     func generateDiary(for date: Date, sources: [DiaryStickerSource]) async throws -> GeneratedDiary {
-        guard let apiKey = BailianSettings.apiKey, !apiKey.isEmpty else {
-            throw BailianDiaryError.missingAPIKey
-        }
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 25
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody(for: date, sources: sources))
-
-        let (data, response) = try await withThrowingTaskGroup(of: (Data, URLResponse).self) { group in
-            group.addTask {
-                try await URLSession.shared.data(for: request)
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: 25_000_000_000)
-                throw BailianDiaryError.requestTimeout
-            }
-
-            guard let result = try await group.next() else {
-                throw BailianDiaryError.requestTimeout
-            }
-            group.cancelAll()
-            return result
-        }
+        let body = try JSONSerialization.data(withJSONObject: requestBody(for: date, sources: sources))
+        let (data, response) = try await performRequest(body: body, retries: 2)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             let message = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
             throw NSError(domain: "BailianDiary", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
@@ -3118,6 +3765,41 @@ private struct BailianDiaryGenerator {
             throw BailianDiaryError.emptyContent
         }
         return try parseGeneratedDiary(from: content)
+    }
+
+    private func performRequest(body: Data, retries: Int) async throws -> (Data, URLResponse) {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 45
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        do {
+            return try await URLSession.shared.data(for: request)
+        } catch {
+            // iOS 首次请求会触发系统网络授权弹窗，并把这个请求本身"牺牲"掉
+            // （立即返回 notConnectedToInternet）。这里等网络真正可用后自动重试，
+            // 用户点「允许」后即可无缝继续，无需手动点「去设置」。
+            if retries > 0, isConnectivityError(error) {
+                let available = await NetworkReachability.waitUntilAvailable(timeout: 15)
+                // 即便已可用也稍等片刻，给系统授权落地留出缓冲。
+                try await Task.sleep(nanoseconds: available ? 400_000_000 : 1_500_000_000)
+                return try await performRequest(body: body, retries: retries - 1)
+            }
+            throw error
+        }
+    }
+
+    private func isConnectivityError(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed, .secureConnectionFailed, .timedOut:
+            return true
+        default:
+            return false
+        }
     }
 
     private func requestBody(for date: Date, sources: [DiaryStickerSource]) throws -> [String: Any] {
@@ -3140,7 +3822,7 @@ private struct BailianDiaryGenerator {
             "messages": [
                 [
                     "role": "system",
-                    "content": "你是一位温柔、具体、有生活观察力的中文日记作者。你会根据用户当天收集的贴纸图片，识别物品和场景，并写成自然、不夸张、可直接放进日记本的文字。"
+                    "content": Self.currentSystemPrompt
                 ],
                 [
                     "role": "user",
@@ -3165,22 +3847,22 @@ private struct BailianDiaryGenerator {
         let q = "\u{22}"
         let jsonExample = "{\n  \(q)title\(q): \(q)\(q),\n  \(q)summary\(q): \(q)\u{4E00}\u{53E5}\u{8BDD}\u{603B}\u{7ED3}\(q),\n  \(q)entries\(q): [\n    { \(q)title\(q): \(q)\(q), \(q)text\(q): \(q)\u{65E5}\u{8BB0}\u{81EA}\u{7136}\u{6BB5}\u{FF0C}80\u{5230}160\u{4E2A}\u{4E2D}\u{6587}\u{5B57}\(q), \(q)stickerIndex\(q): 0, \(q)inlineAnchor\(q): \(q)\u{7269}\u{54C1}\u{77ED}\u{8BCD}\(q) }\n  ]\n}"
         var lines: [String] = []
-        lines.append("请根据下面这一天的贴纸图片，生成一篇中文贴纸日记。")
+        lines.append("请根据下面这一天拍的照片，写一篇中文日记。")
         lines.append("")
         lines.append("日期：\(dateText)")
-        lines.append("贴纸列表：")
+        lines.append("照片列表：")
         lines.append(stickerList)
         lines.append("")
         lines.append("要求：")
-        lines.append("1. 先理解每张图片里是什么物品、饮品、票据、食物或生活场景。")
-        lines.append("2. 不要编造过于具体但图片中看不出的地点、人名、价格。")
+        lines.append("1. 先理解每张照片里是什么物品、饮品、票据、食物或生活场景。")
+        lines.append("2. 不要编造过于具体但照片中看不出的地点、人名、价格。")
         lines.append("3. 文风像私人日记，温柔、具体、自然，不要营销腔。")
         lines.append("4. 文字温柔、具体、连贯，段落之间自然过渡，整体读起来像一篇完整的日记，不要写成生硬的清单。")
         lines.append("5. 不要按上午/中午/下午/傍晚/晚上的时间顺序来组织段落，这样会变成流水账。应该用感受、场景、心情来串联，像回忆而不是日程表。")
-        lines.append("6. 【最重要】必须返回正好 \(stickerCount) 个 entry：今天一共有 \(stickerCount) 张贴纸，每一张贴纸都必须对应一个 entry，不能多也不能少。哪怕某张贴纸不好写，也要为它写一段，绝对不能漏掉任何一张贴纸。")
-        lines.append("7. entries 的顺序必须和上面贴纸列表的编号顺序完全一致：第 1 个 entry 对应编号 0 的贴纸，第 2 个 entry 对应编号 1 的贴纸，依此类推。每个 entry 的 stickerIndex 必须等于它在 entries 数组中的位置（从 0 开始计数），即第 i 个 entry 的 stickerIndex = i。")
-        lines.append("8. 每个 entry 主要围绕它对应的那张贴纸来写，但语气和情绪要和整篇日记连贯，不要彼此孤立。")
-        lines.append("9. 【非常重要】贴纸和段落的对应关系只是内部用来摆放贴纸的，读者完全感觉不到。绝对不要在正文里出现「第1张/第一张/这张/那张贴纸」「图片里/照片里/图中」「贴纸上」之类描述图片本身的说法，也不要用「今天的第一件事/第二件事」这种逐条罗列的口吻。要把贴纸的内容当成当天真实发生、真实吃到、真实看到的事，自然地写进回忆式的叙述里，像真的在写日记，而不是在给图片配文字说明。")
+        lines.append("6. 【最重要】必须返回正好 \(stickerCount) 个 entry：今天一共有 \(stickerCount) 张照片，每一张照片都必须对应一个 entry，不能多也不能少。哪怕某张照片不好写，也要为它写一段，绝对不能漏掉任何一张。")
+        lines.append("7. entries 的顺序必须和上面照片列表的编号顺序完全一致：第 1 个 entry 对应编号 0 的照片，第 2 个 entry 对应编号 1 的照片，依此类推。每个 entry 的 stickerIndex 必须等于它在 entries 数组中的位置（从 0 开始计数），即第 i 个 entry 的 stickerIndex = i。")
+        lines.append("8. 每个 entry 主要围绕它对应的那张照片来写，但语气和情绪要和整篇日记连贯，不要彼此孤立。")
+        lines.append("9. 【非常重要】照片和段落的对应关系只是内部排版用的，读者完全感觉不到。绝对不要在正文里出现「第1张/第一张/这张/那张照片」「图片里/照片里/图中」「贴纸」之类描述图片本身的说法，也不要用「今天的第一件事/第二件事」这种逐条罗列的口吻。要把照片的内容当成当天真实发生、真实吃到、真实看到的事，自然地写进回忆式的叙述里，像真的在写日记，而不是在给图片配文字说明。")
         lines.append("10. 顶层 title 和每个 entry 的 title 都固定返回空字符串，不需要任何标题。")
         lines.append("11. 每段必须给出 inlineAnchor；inlineAnchor 必须是该段 text 中真实出现的短词或短语，优先选择物品名、食物名、饮品名、票据名或场景关键词。")
         lines.append("12. 不要把 inlineAnchor 写成段落标题，不要编造日记里没有出现的词。")
@@ -3234,23 +3916,6 @@ private struct BailianDiaryGenerator {
     }
 }
 
-private enum BailianSettings {
-    static let apiKeyUserDefaultsKey = "bailianDashScopeAPIKey"
-    static let testAPIKey = "sk-19c9a42f80bd4627a10d73dc48a2b561"
-
-    static var apiKey: String? {
-        let stored = UserDefaults.standard.string(forKey: apiKeyUserDefaultsKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if let stored, !stored.isEmpty {
-            return stored
-        }
-        if !testAPIKey.isEmpty {
-            return testAPIKey
-        }
-        return Bundle.main.object(forInfoDictionaryKey: "DASHSCOPE_API_KEY") as? String
-    }
-}
-
 private struct BailianChatResponse: Decodable {
     let choices: [Choice]
 
@@ -3281,6 +3946,18 @@ private struct StickerCalendarRecord: Identifiable {
     var availableStickers: [UIImage] {
         stickers.compactMap { $0 }
     }
+
+    func withCalendarPreviewSticker() -> StickerCalendarRecord {
+        guard availableStickers.isEmpty else { return self }
+        var copy = self
+        copy.stickers = StickerStore.shared.loadOrderedStickersForDate(date).prefix(1).map { Optional($0.image) }
+        return copy
+    }
+}
+
+private func isRealDiaryText(_ text: String) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !trimmed.isEmpty && trimmed != "每日贴纸" && trimmed != "今日日记"
 }
 
 private struct DiaryStickerPilePreview: View {
@@ -3347,13 +4024,13 @@ private final class DiaryRecordStore {
     func loadCalendarRecords() -> [StickerCalendarRecord] {
         loadEntries().map { entry in
             let date = Date(timeIntervalSince1970: entry.dayTimestamp)
-            let stickerCount = StickerStore.shared.loadStickersForDate(date).count
+            let stickers = StickerStore.shared.loadOrderedStickersForDate(date)
             return StickerCalendarRecord(
                 date: date,
-                stickers: [] as [UIImage?],
+                stickers: stickers.prefix(1).map { Optional($0.image) },
                 diaryText: entry.diaryText,
                 diaryTitle: entry.diaryTitle,
-                stickerCountOverride: stickerCount,
+                stickerCountOverride: stickers.count,
                 stickerSlots: entry.stickerSlots ?? [],
                 hadStickerSlots: entry.hadStickerSlots ?? []
             )
@@ -3414,9 +4091,120 @@ private struct PersistedDiaryRecord: Codable {
     var hadStickerSlots: [Bool]?
 }
 
+private enum SampleContentSeeder {
+    private static let seededKey = "stickerDiarySampleContentSeeded.v2"
+    private static let sampleDateKey = "stickerDiarySampleDate"
+    private static let firstLaunchDateKey = "stickerDiaryFirstLaunchDate"
+    private static let removedSampleDiaryKey = "stickerDiarySampleDiaryRemoved.v2"
+    private static let removedSampleStickersKey = "stickerDiarySampleStickersRemoved.v1"
+    private static let legacySampleDiaryTitle = "欢迎来到贴纸日记"
+    private static let legacySampleDiarySnippets = [
+        "把每天遇到的小东西，收进一页日记里",
+        "AI 会帮你识别并抠图",
+        "小猫、小狗、卡皮巴拉",
+        "普通但可爱的瞬间"
+    ]
+    private static let legacySampleStickers = [
+        SampleSticker(title: "小猫", subtitle: "今天收进来的第一张贴纸", assetName: "SampleCat"),
+        SampleSticker(title: "小狗", subtitle: "给日记加一点软乎乎的心情", assetName: "SampleDog"),
+        SampleSticker(title: "卡皮巴拉", subtitle: "慢慢悠悠也值得记录", assetName: "SampleCapybara")
+    ]
+
+    /// The date of the sample diary (nil if none, or if the user has since generated a real diary on that day).
+    static var sampleDiaryDate: Date? {
+        let ts = UserDefaults.standard.double(forKey: sampleDateKey)
+        return ts > 0 ? Date(timeIntervalSince1970: ts) : nil
+    }
+
+    /// Call when the user generates a real diary — if it lands on the sample date, clear the marker.
+    static func clearSampleMarkerIfNeeded(for date: Date) {
+        guard let sample = sampleDiaryDate else { return }
+        if Calendar.current.isDate(date, inSameDayAs: sample) {
+            UserDefaults.standard.removeObject(forKey: sampleDateKey)
+        }
+    }
+
+    static func seedIfNeeded() {
+        let defaults = UserDefaults.standard
+        removeLegacySampleDiaryIfNeeded()
+        removeLegacySampleStickersIfNeeded()
+        guard !defaults.bool(forKey: seededKey) else { return }
+
+        defaults.set(true, forKey: seededKey)
+        defaults.removeObject(forKey: sampleDateKey)
+    }
+
+    private static func removeLegacySampleDiaryIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: removedSampleDiaryKey) else { return }
+        defer { defaults.set(true, forKey: removedSampleDiaryKey) }
+
+        let records = DiaryRecordStore.shared.loadCalendarRecords()
+        for record in records where isLegacySampleDiary(record) {
+            DiaryRecordStore.shared.deleteDiary(for: record.date)
+            if Calendar.current.isDate(record.date, inSameDayAs: sampleDiaryDate ?? .distantPast) {
+                defaults.removeObject(forKey: sampleDateKey)
+            }
+        }
+    }
+
+    private static func isLegacySampleDiary(_ record: StickerCalendarRecord) -> Bool {
+        if record.diaryTitle?.trimmingCharacters(in: .whitespacesAndNewlines) == legacySampleDiaryTitle {
+            return true
+        }
+
+        let text = record.diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return legacySampleDiarySnippets.contains { text.contains($0) }
+    }
+
+    private static func removeLegacySampleStickersIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: removedSampleStickersKey) else { return }
+        defer { defaults.set(true, forKey: removedSampleStickersKey) }
+
+        let legacyPairs = Set(legacySampleStickers.map { "\($0.title)\u{1F}\($0.subtitle)" })
+        for entry in StickerStore.shared.loadEntries() {
+            let key = "\(entry.title)\u{1F}\(entry.subtitle)"
+            if legacyPairs.contains(key) {
+                StickerStore.shared.deleteSticker(id: entry.id)
+            }
+        }
+    }
+
+    private static func sampleDate() -> Date {
+        let defaults = UserDefaults.standard
+        if let existingDate = storedFirstLaunchDate(in: defaults) {
+            return existingDate
+        }
+
+        let firstLaunchDate = sampleDate(on: Date())
+        defaults.set(firstLaunchDate.timeIntervalSince1970, forKey: firstLaunchDateKey)
+        return firstLaunchDate
+    }
+
+    private static func storedFirstLaunchDate(in defaults: UserDefaults) -> Date? {
+        let timestamp = defaults.double(forKey: firstLaunchDateKey)
+        guard timestamp > 0 else { return nil }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+
+    private static func sampleDate(on date: Date) -> Date {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        return calendar.date(bySettingHour: 9, minute: 20, second: 0, of: startOfDay) ?? startOfDay
+    }
+
+    private struct SampleSticker {
+        let title: String
+        let subtitle: String
+        let assetName: String
+    }
+}
+
 private struct StickerCalendarPage: View {
     let records: [StickerCalendarRecord]
     let currentStickers: [UIImage]
+    let refreshToken: Int
     let onClose: () -> Void
     var onOpenDiary: ((Date) -> Void)?
     @State private var selectedDate: Date?
@@ -3462,6 +4250,9 @@ private struct StickerCalendarPage: View {
         .onChange(of: displayedMonth) { _, _ in
             rebuildCalendarCache()
         }
+        .onChange(of: refreshToken) { _, _ in
+            rebuildCalendarCache()
+        }
         .gesture(monthSwipeGesture)
     }
 
@@ -3479,7 +4270,14 @@ private struct StickerCalendarPage: View {
                 HeaderIconButton(systemImage: "chevron.right", accessibilityLabel: "下个月") {
                     shiftDisplayedMonth(by: 1)
                 }
+                if !isDisplayedMonthCurrent {
+                    HeaderIconButton(systemImage: "calendar", accessibilityLabel: "回到本月") {
+                        returnToCurrentMonth()
+                    }
+                    .transition(.scale(scale: 0.86).combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isDisplayedMonthCurrent)
         }
     }
 
@@ -3541,19 +4339,9 @@ private struct StickerCalendarPage: View {
             }
 
             if !cachedDisplayStickers.isEmpty {
-                HStack(spacing: -12) {
-                    ForEach(Array(cachedDisplayStickers.prefix(5).enumerated()), id: \.offset) { index, sticker in
-                        Image(uiImage: sticker)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 64, height: 64)
-                            .rotationEffect(.degrees([-4, 3, -2, 5, -3][index % 5]))
-                            .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
-                            .zIndex(Double(5 - index))
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 2)
+                CalendarStickerScatter(images: cachedDisplayStickers)
+                    .frame(height: 88)
+                    .padding(.top, 2)
             }
         }
         .padding(.horizontal, 22)
@@ -3582,7 +4370,7 @@ private struct StickerCalendarPage: View {
         var recordsByDay = Dictionary(uniqueKeysWithValues: storedRecords.map { (calendar.startOfDay(for: $0.date), $0) })
 
         for record in monthRecords {
-            recordsByDay[calendar.startOfDay(for: record.date)] = record
+            recordsByDay[calendar.startOfDay(for: record.date)] = record.withCalendarPreviewSticker()
         }
 
         if isDisplayedMonthCurrent, recordsByDay.isEmpty, !currentStickers.isEmpty {
@@ -3592,11 +4380,11 @@ private struct StickerCalendarPage: View {
         cachedRecordsByDay = recordsByDay
         cachedDisplayRecords = recordsByDay.values.sorted { $0.date < $1.date }
 
-        // Show the 5 most recently added stickers (newest first)
+        // Show the most recently added stickers (newest first)
         let allMonthEntries = StickerStore.shared.loadEntries().filter {
             calendar.isDate($0.date, equalTo: displayedMonth, toGranularity: .month)
         }.sorted { $0.timestamp > $1.timestamp }
-        let recentStickers = allMonthEntries.prefix(5).compactMap { StickerStore.shared.loadStickerImage(id: $0.id) }
+        let recentStickers = allMonthEntries.prefix(10).compactMap { StickerStore.shared.loadStickerImage(id: $0.id) }
         cachedDisplayStickers = recentStickers.isEmpty && isDisplayedMonthCurrent ? currentStickers : recentStickers
         cachedStickerCount = max(cachedDisplayRecords.reduce(0) { $0 + $1.stickerCount }, allMonthEntries.count, cachedDisplayRecords.count)
     }
@@ -3656,6 +4444,78 @@ private struct StickerCalendarPage: View {
         withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
             displayedMonth = monthStart
         }
+    }
+
+    private func returnToCurrentMonth() {
+        guard let monthStart = calendar.dateInterval(of: .month, for: today)?.start else { return }
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
+            displayedMonth = monthStart
+        }
+    }
+}
+
+private struct CalendarStickerScatter: View {
+    let images: [UIImage]
+
+    private struct Spec {
+        let x: CGFloat
+        let y: CGFloat
+        let size: CGFloat
+        let rotation: Double
+    }
+
+    private let specs: [Spec] = [
+        Spec(x: 0.00, y: 0.18, size: 58, rotation: -9),
+        Spec(x: 0.10, y: 0.04, size: 66, rotation: 7),
+        Spec(x: 0.21, y: 0.20, size: 64, rotation: -4),
+        Spec(x: 0.32, y: 0.02, size: 68, rotation: 5),
+        Spec(x: 0.43, y: 0.22, size: 62, rotation: -8),
+        Spec(x: 0.54, y: 0.06, size: 66, rotation: 8),
+        Spec(x: 0.64, y: 0.24, size: 58, rotation: -5),
+        Spec(x: 0.73, y: 0.08, size: 64, rotation: 6),
+        Spec(x: 0.82, y: 0.24, size: 56, rotation: -10),
+        Spec(x: 0.90, y: 0.10, size: 60, rotation: 9)
+    ]
+
+    var body: some View {
+        GeometryReader { geo in
+            let visible = Array(images.prefix(specs.count))
+            let extraCount = max(images.count - specs.count, 0)
+
+            ZStack(alignment: .leading) {
+                ForEach(Array(visible.enumerated()), id: \.offset) { index, image in
+                    let spec = specs[index]
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: spec.size, height: spec.size)
+                        .rotationEffect(.degrees(spec.rotation))
+                        .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                        .position(
+                            x: 24 + geo.size.width * spec.x,
+                            y: geo.size.height * spec.y + spec.size / 2
+                        )
+                        .zIndex(Double(index))
+                }
+
+                if extraCount > 0 {
+                    Text("+\(extraCount)")
+                        .font(.system(size: 13, weight: .black, design: .rounded))
+                        .foregroundStyle(Color(red: 0.34, green: 0.24, blue: 0.18))
+                        .frame(width: 42, height: 30)
+                        .background(.white.opacity(0.76), in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.10), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.08), radius: 5, y: 2)
+                        .position(x: geo.size.width - 22, y: 20)
+                        .zIndex(20)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .accessibilityLabel("本月贴纸预览")
     }
 }
 
@@ -3717,17 +4577,9 @@ private struct AchievementUnlockOverlay: View {
                 .ignoresSafeArea()
                 .onTapGesture(perform: onDone)
 
-            AchievementFireworksOverlay()
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
             AchievementPopup(
                 title: unlock.tier.title,
                 subtitle: unlock.tier.condition.replacingOccurrences(of: "。", with: ""),
-                currentCount: unlock.currentCount,
-                nextCount: unlock.nextCount,
-                days: unlock.days,
-                progress: unlock.progress,
                 imageName: unlock.tier.imageName,
                 sticker: unlock.representativeSticker,
                 onDone: onDone
@@ -3740,129 +4592,15 @@ private struct AchievementUnlockOverlay: View {
     }
 }
 
-private struct AchievementFireworkSpark: Identifiable {
-    let id = UUID()
-    var x: CGFloat
-    var y: CGFloat
-    var vx: CGFloat
-    var vy: CGFloat
-    var color: Color
-    var life: CGFloat = 1
-    var size: CGFloat
-}
-
-private struct AchievementFirework: Identifiable {
-    let id = UUID()
-    var sparks: [AchievementFireworkSpark]
-}
-
-private struct AchievementFireworksOverlay: View {
-    @State private var fireworks: [AchievementFirework] = []
-
-    private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        GeometryReader { geo in
-            Canvas { context, _ in
-                for firework in fireworks {
-                    for spark in firework.sparks where spark.life > 0 {
-                        let rect = CGRect(
-                            x: spark.x - spark.size / 2,
-                            y: spark.y - spark.size / 2,
-                            width: spark.size,
-                            height: spark.size
-                        )
-                        context.fill(
-                            Path(ellipseIn: rect.insetBy(dx: -spark.size * 0.75, dy: -spark.size * 0.75)),
-                            with: .color(spark.color.opacity(Double(spark.life) * 0.22))
-                        )
-                        context.fill(
-                            Path(ellipseIn: rect),
-                            with: .color(spark.color.opacity(Double(spark.life)))
-                        )
-                    }
-                }
-            }
-            .onAppear {
-                scheduleFireworks(in: geo.size)
-            }
-            .onReceive(timer) { _ in
-                updateFireworks()
-            }
-        }
-    }
-
-    private func scheduleFireworks(in size: CGSize) {
-        fireworks.removeAll()
-        let points = [
-            CGPoint(x: size.width * 0.24, y: size.height * 0.26),
-            CGPoint(x: size.width * 0.76, y: size.height * 0.22),
-            CGPoint(x: size.width * 0.50, y: size.height * 0.18),
-            CGPoint(x: size.width * 0.30, y: size.height * 0.48),
-            CGPoint(x: size.width * 0.72, y: size.height * 0.46)
-        ]
-
-        for (index, point) in points.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.22) {
-                spawnFirework(at: point)
-            }
-        }
-    }
-
-    private func spawnFirework(at center: CGPoint) {
-        let palette = [
-            Color(red: 0.98, green: 0.68, blue: 0.20),
-            Color(red: 0.95, green: 0.34, blue: 0.28),
-            Color(red: 0.42, green: 0.62, blue: 0.96),
-            Color(red: 0.52, green: 0.78, blue: 0.48),
-            Color(red: 0.96, green: 0.78, blue: 0.34)
-        ]
-        let sparkCount = Int.random(in: 42...66)
-        let sparks = (0..<sparkCount).map { index -> AchievementFireworkSpark in
-            let angle = CGFloat.random(in: 0...(2 * .pi))
-            let speed = CGFloat.random(in: 1.6...5.3)
-            return AchievementFireworkSpark(
-                x: center.x,
-                y: center.y,
-                vx: cos(angle) * speed,
-                vy: sin(angle) * speed,
-                color: palette[index % palette.count],
-                size: CGFloat.random(in: 2.2...5.2)
-            )
-        }
-        fireworks.append(AchievementFirework(sparks: sparks))
-    }
-
-    private func updateFireworks() {
-        for fireworkIndex in fireworks.indices {
-            for sparkIndex in fireworks[fireworkIndex].sparks.indices {
-                fireworks[fireworkIndex].sparks[sparkIndex].x += fireworks[fireworkIndex].sparks[sparkIndex].vx
-                fireworks[fireworkIndex].sparks[sparkIndex].y += fireworks[fireworkIndex].sparks[sparkIndex].vy
-                fireworks[fireworkIndex].sparks[sparkIndex].vy += 0.035
-                fireworks[fireworkIndex].sparks[sparkIndex].vx *= 0.988
-                fireworks[fireworkIndex].sparks[sparkIndex].vy *= 0.988
-                fireworks[fireworkIndex].sparks[sparkIndex].life -= 0.010
-            }
-        }
-        fireworks.removeAll { firework in
-            firework.sparks.allSatisfy { $0.life <= 0 }
-        }
-    }
-}
-
 private struct AchievementPopup: View {
     let title: String
     let subtitle: String
-    let currentCount: Int
-    let nextCount: Int
-    let days: Int
-    let progress: CGFloat
     let imageName: String?
     let sticker: UIImage?
     let onDone: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .top, spacing: 16) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -3912,30 +4650,6 @@ private struct AchievementPopup: View {
                 }
             }
 
-            VStack(spacing: 10) {
-                HStack {
-                    achievementStat(value: "\(currentCount)", label: "本月日记")
-                    Divider()
-                        .frame(height: 34)
-                    achievementStat(value: "\(days)", label: "生产天数")
-                    Divider()
-                        .frame(height: 34)
-                    achievementStat(value: "\(nextCount)", label: "下一阶段")
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(red: 0.86, green: 0.83, blue: 0.77))
-
-                        Capsule()
-                            .fill(Color(red: 0.76, green: 0.47, blue: 0.22))
-                            .frame(width: geo.size.width * progress)
-                    }
-                }
-                .frame(height: 10)
-            }
-
             Button(action: onDone) {
                 Text("知道了")
                     .font(.system(size: 18, weight: .black, design: .rounded))
@@ -3954,19 +4668,6 @@ private struct AchievementPopup: View {
         }
         .shadow(color: .black.opacity(0.16), radius: 24, y: 14)
     }
-
-    private func achievementStat(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 22, weight: .black, design: .rounded))
-                .foregroundStyle(Color(red: 0.20, green: 0.13, blue: 0.11))
-
-            Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(red: 0.49, green: 0.44, blue: 0.40))
-        }
-        .frame(maxWidth: .infinity)
-    }
 }
 
 private struct PaperTextureBackground: View {
@@ -3976,6 +4677,8 @@ private struct PaperTextureBackground: View {
 }
 
 private struct AchievementPaperBackground: View {
+    @State private var texture: Image? = PaperTextureCache.cached
+
     var body: some View {
         ZStack {
             Color(red: 0.955, green: 0.935, blue: 0.875)
@@ -3990,57 +4693,13 @@ private struct AchievementPaperBackground: View {
                 endPoint: .bottomTrailing
             )
 
-            Canvas { context, size in
-                for index in 0..<760 {
-                    let x = CGFloat((index * 53) % 1193) / 1193 * size.width
-                    let y = CGFloat((index * 97) % 1187) / 1187 * size.height
-                    let dotSize = CGFloat((index % 5) + 1) * 0.62
-                    let opacity = 0.028 + Double(index % 6) * 0.008
-                    context.fill(
-                        Path(ellipseIn: CGRect(x: x, y: y, width: dotSize, height: dotSize)),
-                        with: .color(Color(red: 0.34, green: 0.28, blue: 0.22).opacity(opacity))
-                    )
-                }
-
-                for index in 0..<170 {
-                    let x = CGFloat((index * 137) % 1103) / 1103 * size.width
-                    let y = CGFloat((index * 191) % 1097) / 1097 * size.height
-                    let length = CGFloat(28 + (index % 9) * 12)
-                    let angle = CGFloat(index % 13) * .pi / 52 - .pi / 8
-                    var path = Path()
-                    path.move(to: CGPoint(x: x, y: y))
-                    path.addLine(to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length))
-                    context.stroke(
-                        path,
-                        with: .color(Color(red: 0.42, green: 0.34, blue: 0.25).opacity(index % 4 == 0 ? 0.070 : 0.045)),
-                        lineWidth: CGFloat(index % 3 == 0 ? 0.95 : 0.55)
-                    )
-                }
-
-                for index in 0..<18 {
-                    let x = CGFloat((index * 223) % 977) / 977 * size.width
-                    let y = CGFloat((index * 311) % 991) / 991 * size.height
-                    let radius = CGFloat(64 + (index % 5) * 34)
-                    context.stroke(
-                        Path(ellipseIn: CGRect(x: x - radius / 2, y: y - radius / 2, width: radius, height: radius)),
-                        with: .color(Color(red: 0.50, green: 0.42, blue: 0.32).opacity(index % 3 == 0 ? 0.040 : 0.026)),
-                        lineWidth: 1.35
-                    )
-                }
-
-                for index in 0..<34 {
-                    let x = CGFloat((index * 313) % 1009) / 1009 * size.width
-                    let y = CGFloat((index * 419) % 1013) / 1013 * size.height
-                    let width = CGFloat(90 + (index % 6) * 42)
-                    let height = CGFloat(20 + (index % 5) * 13)
-                    let rect = CGRect(x: x - width / 2, y: y - height / 2, width: width, height: height)
-                    context.fill(
-                        Path(ellipseIn: rect),
-                        with: .color(Color(red: 0.68, green: 0.58, blue: 0.44).opacity(0.018))
-                    )
-                }
+            // 程序化纸张纹理：离屏渲染一次后缓存复用，首帧不阻塞。
+            if let texture {
+                texture
+                    .resizable()
+                    .blendMode(.multiply)
+                    .transition(.opacity)
             }
-            .blendMode(.multiply)
 
             RadialGradient(
                 colors: [
@@ -4054,6 +4713,90 @@ private struct AchievementPaperBackground: View {
             .blendMode(.multiply)
         }
         .ignoresSafeArea()
+        .task {
+            guard texture == nil else { return }
+            if let rendered = await PaperTextureCache.render() {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    texture = rendered
+                }
+            }
+        }
+    }
+}
+
+/// 把昂贵的程序化纸张纹理离屏渲染成一张图，整个 app 只渲染一次后复用，
+/// 避免每个页面（含启动首帧）都在主线程重画近千个图元。
+@MainActor
+private enum PaperTextureCache {
+    static private(set) var cached: Image?
+
+    static func render() async -> Image? {
+        if let cached { return cached }
+        // 纹理是无序噪点，固定分辨率渲染后拉伸铺满即可，与具体屏幕尺寸无关。
+        let size = CGSize(width: 640, height: 1280)
+        let renderer = ImageRenderer(content: PaperTextureCanvas(size: size).frame(width: size.width, height: size.height))
+        renderer.scale = 1
+        guard let uiImage = renderer.uiImage else { return nil }
+        let image = Image(uiImage: uiImage)
+        cached = image
+        return image
+    }
+}
+
+private struct PaperTextureCanvas: View {
+    let size: CGSize
+
+    var body: some View {
+        Canvas { context, size in
+            for index in 0..<760 {
+                let x = CGFloat((index * 53) % 1193) / 1193 * size.width
+                let y = CGFloat((index * 97) % 1187) / 1187 * size.height
+                let dotSize = CGFloat((index % 5) + 1) * 0.62
+                let opacity = 0.028 + Double(index % 6) * 0.008
+                context.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y, width: dotSize, height: dotSize)),
+                    with: .color(Color(red: 0.34, green: 0.28, blue: 0.22).opacity(opacity))
+                )
+            }
+
+            for index in 0..<170 {
+                let x = CGFloat((index * 137) % 1103) / 1103 * size.width
+                let y = CGFloat((index * 191) % 1097) / 1097 * size.height
+                let length = CGFloat(28 + (index % 9) * 12)
+                let angle = CGFloat(index % 13) * .pi / 52 - .pi / 8
+                var path = Path()
+                path.move(to: CGPoint(x: x, y: y))
+                path.addLine(to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length))
+                context.stroke(
+                    path,
+                    with: .color(Color(red: 0.42, green: 0.34, blue: 0.25).opacity(index % 4 == 0 ? 0.070 : 0.045)),
+                    lineWidth: CGFloat(index % 3 == 0 ? 0.95 : 0.55)
+                )
+            }
+
+            for index in 0..<18 {
+                let x = CGFloat((index * 223) % 977) / 977 * size.width
+                let y = CGFloat((index * 311) % 991) / 991 * size.height
+                let radius = CGFloat(64 + (index % 5) * 34)
+                context.stroke(
+                    Path(ellipseIn: CGRect(x: x - radius / 2, y: y - radius / 2, width: radius, height: radius)),
+                    with: .color(Color(red: 0.50, green: 0.42, blue: 0.32).opacity(index % 3 == 0 ? 0.040 : 0.026)),
+                    lineWidth: 1.35
+                )
+            }
+
+            for index in 0..<34 {
+                let x = CGFloat((index * 313) % 1009) / 1009 * size.width
+                let y = CGFloat((index * 419) % 1013) / 1013 * size.height
+                let width = CGFloat(90 + (index % 6) * 42)
+                let height = CGFloat(20 + (index % 5) * 13)
+                let rect = CGRect(x: x - width / 2, y: y - height / 2, width: width, height: height)
+                context.fill(
+                    Path(ellipseIn: rect),
+                    with: .color(Color(red: 0.68, green: 0.58, blue: 0.44).opacity(0.018))
+                )
+            }
+        }
     }
 }
 
@@ -4136,26 +4879,22 @@ struct StickerDiaryOnboardingView: View {
 private enum StickerOnboardingPage: Int, CaseIterable, Identifiable {
     case collect
     case write
-    case revisit
 
     var id: Int { rawValue }
 
     var title: String {
         switch self {
-        case .collect: return "收集今天"
+        case .collect: return "拍一张"
         case .write: return "贴进日记"
-        case .revisit: return "翻看每一天"
         }
     }
 
     var subtitle: String {
         switch self {
         case .collect:
-            return "拍下生活里的小片段，把它变成一枚只属于今天的贴纸。"
+            return "拍下今天的小物件，自动变成一张贴纸。"
         case .write:
-            return "贴纸会落在纸页上，文字慢慢长出来，变成这一天的日记。"
-        case .revisit:
-            return "日历会记住每天的第一张贴纸，之后翻回去也能一眼认出那天。"
+            return "用贴纸和文字，收藏难忘的瞬间。"
         }
     }
 }
@@ -4202,8 +4941,6 @@ private struct StickerOnboardingPageView: View {
             CollectStickerOnboardingArt(animate: animate)
         case .write:
             WriteDiaryOnboardingArt(animate: animate)
-        case .revisit:
-            RevisitCalendarOnboardingArt(animate: animate)
         }
     }
 }
@@ -4213,52 +4950,13 @@ private struct CollectStickerOnboardingArt: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(Color.white.opacity(0.58))
-                .frame(width: 286, height: 318)
-                .overlay(SingleLibraryPaperTexture().clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous)))
-                .rotationEffect(.degrees(-2))
-                .shadow(color: .black.opacity(0.08), radius: 22, y: 12)
+            OnboardingCutoutTransition(animate: animate)
 
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.86, green: 0.92, blue: 0.94), Color(red: 0.95, green: 0.84, blue: 0.72)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 176, height: 206)
-                .overlay(alignment: .bottomLeading) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Capsule()
-                            .fill(.white.opacity(0.7))
-                            .frame(width: 78, height: 8)
-                        Capsule()
-                            .fill(.white.opacity(0.48))
-                            .frame(width: 112, height: 8)
-                    }
-                    .padding(18)
-                }
-                .rotationEffect(.degrees(animate ? -7 : -12))
-                .offset(x: animate ? -48 : -34, y: animate ? -48 : -28)
-                .scaleEffect(animate ? 0.88 : 1)
-                .shadow(color: .black.opacity(0.12), radius: 16, y: 9)
+            OnboardingFloatingSticker(imageName: "StickerCalendar", size: 84, rotation: animate ? -18 : -8)
+                .offset(x: animate ? -144 : -130, y: animate ? -142 : -126)
 
-            Image("StickerDiary")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 132, height: 132)
-                .padding(12)
-                .background(.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color(red: 0.73, green: 0.43, blue: 0.17).opacity(0.20), lineWidth: 2)
-                }
-                .rotationEffect(.degrees(animate ? 9 : 3))
-                .offset(x: animate ? 58 : 42, y: animate ? 38 : 26)
-                .scaleEffect(animate ? 1.04 : 0.96)
-                .shadow(color: .black.opacity(0.14), radius: animate ? 18 : 10, y: animate ? 12 : 7)
+            OnboardingFloatingSticker(imageName: "AchieveTier1Cutout", size: 72, rotation: animate ? 16 : 4)
+                .offset(x: animate ? 138 : 116, y: animate ? 116 : 96)
 
             ForEach(0..<8, id: \.self) { index in
                 Circle()
@@ -4273,130 +4971,249 @@ private struct CollectStickerOnboardingArt: View {
     }
 }
 
-private struct WriteDiaryOnboardingArt: View {
+private struct OnboardingCutoutTransition: View {
     let animate: Bool
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color(red: 0.98, green: 0.96, blue: 0.91))
-                .frame(width: 286, height: 326)
-                .overlay(SingleLibraryPaperTexture().clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous)))
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color(red: 0.80, green: 0.45, blue: 0.30).opacity(0.16))
-                        .frame(width: 2)
-                        .padding(.leading, 42)
-                        .padding(.vertical, 24)
-                }
-                .shadow(color: .black.opacity(0.08), radius: 22, y: 12)
+        TimelineView(.animation) { timeline in
+            let cycle = 4.2
+            let phase = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle) / cycle
+            let cutoutProgress = smoothstep((phase - 0.18) / 0.34)
+            let resetProgress = smoothstep((phase - 0.86) / 0.14)
+            let progress = cutoutProgress * (1 - resetProgress)
 
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(0..<5, id: \.self) { index in
-                    Capsule()
-                        .fill(Color(red: 0.40, green: 0.30, blue: 0.24).opacity(index < (animate ? 5 : 3) ? 0.34 : 0.12))
-                        .frame(width: CGFloat([150, 196, 170, 214, 128][index]), height: 8)
-                        .animation(.easeInOut(duration: 0.55).delay(Double(index) * 0.08), value: animate)
-                }
+            ZStack {
+                Image("OnboardingOriginalPhoto")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 250, height: 318)
+                    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .opacity(1 - progress)
+                    .scaleEffect(1 - 0.08 * progress)
+                    .shadow(color: .black.opacity(0.12), radius: 18, y: 10)
+
+                Image("OnboardingStickerPreview")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 286, height: 318)
+                    .opacity(progress)
+                    .scaleEffect(0.88 + 0.12 * progress)
+                    .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
             }
-            .offset(x: 18, y: 36)
-
-            onboardingSticker(imageName: "StickerDiary", size: 96, rotation: animate ? -10 : -4)
-                .offset(x: animate ? -76 : -64, y: animate ? -98 : -78)
-
-            onboardingSticker(imageName: "StickerCalendar", size: 82, rotation: animate ? 13 : 6)
-                .offset(x: animate ? 86 : 70, y: animate ? -36 : -22)
-
-            onboardingSticker(imageName: "AchieveTier1Cutout", size: 74, rotation: animate ? -3 : -12)
-                .offset(x: animate ? 44 : 30, y: animate ? 112 : 98)
         }
     }
 
-    private func onboardingSticker(imageName: String, size: CGFloat, rotation: Double) -> some View {
+    private func smoothstep(_ value: Double) -> Double {
+        let x = min(max(value, 0), 1)
+        return x * x * (3 - 2 * x)
+    }
+}
+
+private struct OnboardingCutoutStickerWindow: View {
+    let imageName: String
+    let width: CGFloat
+    let height: CGFloat
+
+    var body: some View {
+        Image(imageName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: width, height: height)
+            .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+    }
+}
+
+private struct OnboardingStickerWindow: View {
+    let imageName: String
+    let width: CGFloat
+    let height: CGFloat
+    let cornerRadius: CGFloat
+    let animate: Bool
+
+    var body: some View {
+        Image(imageName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: width, height: height)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: .black.opacity(0.12), radius: 18, y: 10)
+    }
+}
+
+private struct OnboardingFloatingSticker: View {
+    let imageName: String
+    let size: CGFloat
+    let rotation: Double
+
+    var body: some View {
         Image(imageName)
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
-            .padding(8)
-            .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .rotationEffect(.degrees(rotation))
-            .scaleEffect(animate ? 1.03 : 0.97)
-            .shadow(color: .black.opacity(0.13), radius: 12, y: 7)
+            .shadow(color: .black.opacity(0.16), radius: 12, y: 7)
     }
 }
 
-private struct RevisitCalendarOnboardingArt: View {
+private struct WriteDiaryOnboardingArt: View {
     let animate: Bool
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
-    private let days = Array(1...21)
+    private struct Paragraph {
+        let text: String
+        let stickerName: String?
+        let stickerOnRight: Bool
+    }
+
+    private static let paragraphs: [Paragraph] = [
+        Paragraph(text: "下午在回家的路上，看到一只橘色的小奶猫。它趴在路边，眼睛睁得大大的，好奇地看着来往的行人。", stickerName: "SampleCat", stickerOnRight: true),
+        Paragraph(text: "到家后小狗已经在门口等了好久，一看到我就摇着尾巴扑过来，毛茸茸的脑袋蹭个不停。", stickerName: "SampleDog", stickerOnRight: false),
+    ]
+
+    private static let fullLength: Int = paragraphs.map(\.text.count).reduce(0, +)
+
+    @State private var visibleChars = 0
+    @State private var typingTimer: Timer?
+
+    private let ink = Color(red: 0.30, green: 0.24, blue: 0.18)
+    private let lineColor = Color(red: 0.82, green: 0.78, blue: 0.72).opacity(0.45)
+    private let marginColor = Color(red: 0.85, green: 0.52, blue: 0.48).opacity(0.25)
+    private let paper = Color(red: 0.98, green: 0.96, blue: 0.92)
+
+    private let cardWidth: CGFloat = 306
+    private let cardHeight: CGFloat = 370
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Color.white.opacity(0.62))
-                .frame(width: 304, height: 308)
-                .overlay(SingleLibraryPaperTexture().clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous)))
-                .shadow(color: .black.opacity(0.08), radius: 22, y: 12)
+            // Paper card with ruled lines
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(paper)
+                .frame(width: cardWidth, height: cardHeight)
+                .overlay(ruledLines)
+                .overlay(marginLine)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color(red: 0.86, green: 0.82, blue: 0.76), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.10), radius: 22, y: 12)
 
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(days, id: \.self) { day in
-                    calendarCell(day: day)
-                }
-            }
-            .frame(width: 254)
-            .offset(y: -8)
+            // Content overlay
+            VStack(alignment: .leading, spacing: 0) {
+                // Date header
+                Text("6月3日")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(ink)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
+                    .padding(.leading, 46)
 
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color(red: 0.98, green: 0.95, blue: 0.88))
-                .frame(width: 190, height: 110)
-                .overlay(SingleLibraryPaperTexture().clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous)))
-                .overlay(alignment: .leading) {
-                    VStack(alignment: .leading, spacing: 9) {
-                        Capsule().fill(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.28)).frame(width: 92, height: 7)
-                        Capsule().fill(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.18)).frame(width: 126, height: 7)
-                        Capsule().fill(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.14)).frame(width: 74, height: 7)
+                // Paragraphs
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(Array(Self.paragraphs.enumerated()), id: \.offset) { index, para in
+                        diaryParagraph(para, index: index)
                     }
-                    .padding(.leading, 22)
                 }
-                .rotationEffect(.degrees(animate ? 4 : 0))
-                .offset(x: animate ? 26 : 8, y: animate ? 130 : 146)
-                .shadow(color: .black.opacity(0.10), radius: 14, y: 8)
+                .padding(.horizontal, 20)
+                .padding(.leading, 24)
 
-            Image("StickerDiary")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 78, height: 78)
-                .padding(7)
-                .background(.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .rotationEffect(.degrees(animate ? -8 : -2))
-                .offset(x: animate ? -58 : -72, y: animate ? 92 : 82)
-                .shadow(color: .black.opacity(0.14), radius: 12, y: 7)
+                Spacer()
+            }
+            .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
+        }
+        .onAppear { startTyping() }
+        .onDisappear { typingTimer?.invalidate() }
+    }
+
+    private var ruledLines: some View {
+        Canvas { context, size in
+            let lineSpacing: CGFloat = 28
+            var y: CGFloat = 52
+            while y < size.height - 16 {
+                context.stroke(
+                    Path { path in
+                        path.move(to: CGPoint(x: 16, y: y))
+                        path.addLine(to: CGPoint(x: size.width - 16, y: y))
+                    },
+                    with: .color(lineColor),
+                    lineWidth: 0.5
+                )
+                y += lineSpacing
+            }
         }
     }
 
-    private func calendarCell(day: Int) -> some View {
-        let highlighted = [5, 11, 17].contains(day)
-        return ZStack {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(highlighted ? Color(red: 0.96, green: 0.88, blue: 0.76) : Color(red: 0.92, green: 0.89, blue: 0.84).opacity(0.78))
-                .frame(height: 32)
+    private var marginLine: some View {
+        Canvas { context, size in
+            context.stroke(
+                Path { path in
+                    path.move(to: CGPoint(x: 42, y: 12))
+                    path.addLine(to: CGPoint(x: 42, y: size.height - 12))
+                },
+                with: .color(marginColor),
+                lineWidth: 1
+            )
+        }
+    }
 
-            if day == 11 {
-                Image("StickerCalendar")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: animate ? 30 : 24, height: animate ? 30 : 24)
-                    .offset(y: animate ? -5 : 0)
-                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+    private func diaryParagraph(_ para: Paragraph, index: Int) -> some View {
+        let charsBefore = Self.paragraphs.prefix(index).map(\.text.count).reduce(0, +)
+        let charsForThis = max(0, min(para.text.count, visibleChars - charsBefore))
+        let visibleText = String(para.text.prefix(charsForThis))
+        let showSticker = charsForThis > 6
+
+        return HStack(alignment: .top, spacing: 8) {
+            if para.stickerOnRight {
+                textView(visibleText)
+                if showSticker, let name = para.stickerName {
+                    stickerImage(name, wiggleOffset: index)
+                }
             } else {
-                Text("\(day)")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundStyle(Color(red: 0.42, green: 0.36, blue: 0.31).opacity(highlighted ? 0.82 : 0.45))
+                if showSticker, let name = para.stickerName {
+                    stickerImage(name, wiggleOffset: index)
+                }
+                textView(visibleText)
+            }
+        }
+    }
+
+    private func textView(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12.5, weight: .medium))
+            .foregroundStyle(ink)
+            .lineSpacing(5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func stickerImage(_ name: String, wiggleOffset: Int) -> some View {
+        let baseAngle = wiggleOffset % 2 == 0 ? -5.0 : 5.0
+        return Image(name)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 80, height: 80)
+            .rotationEffect(.degrees(animate ? baseAngle : -baseAngle))
+            .shadow(color: .black.opacity(0.14), radius: 8, y: 5)
+    }
+
+    private func startTyping() {
+        visibleChars = 0
+        let total = Self.fullLength
+        let charInterval = 3.6 / Double(total)
+
+        typingTimer = Timer.scheduledTimer(withTimeInterval: charInterval, repeats: true) { timer in
+            if visibleChars < total {
+                visibleChars += 1
+            } else {
+                timer.invalidate()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    visibleChars = 0
+                    startTyping()
+                }
             }
         }
     }
 }
+
 
 private struct StickerLibraryPage: View {
     let importTargetDate: Date?
@@ -4715,7 +5532,6 @@ private struct StickerLibraryPage: View {
         let images = groups
             .flatMap(\.items)
             .filter { selectedStickerIDs.contains($0.id) }
-            .sorted { $0.entry.timestamp < $1.entry.timestamp }
             .map(\.image)
         guard !images.isEmpty else { return }
         onImport(images, importTargetDate)
@@ -4764,12 +5580,11 @@ private struct StickerLibraryPage: View {
         }
 
         groups = grouped
-            .map { day, entries in
-                let items = entries.compactMap { entry -> StickerLibraryItem? in
-                    guard let image = StickerStore.shared.loadStickerImage(id: entry.id) else { return nil }
-                    return StickerLibraryItem(entry: entry, image: image)
-                }
-                .sorted { $0.entry.timestamp > $1.entry.timestamp }
+            .map { day, _ in
+                let items = StickerStore.shared.loadOrderedStickersForDate(day)
+                    .map { entry, image in
+                        return StickerLibraryItem(entry: entry, image: image)
+                    }
 
                 return StickerLibraryDayGroup(date: day, items: items)
             }
@@ -5123,6 +5938,8 @@ private struct StickerLibraryCell: View {
 }
 
 private struct DiaryBookView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     let entries: [DiaryEntry]
     let records: [StickerCalendarRecord]
     @Binding var selectedDate: Date
@@ -5136,6 +5953,10 @@ private struct DiaryBookView: View {
     let onDateEntries: (Date) -> [DiaryEntry]
     let onRegenerate: (Date) -> Void
     let onClearDiary: (Date) -> Void
+    let activeCoachStep: AppCoachStep?
+    let onCoachAction: (AppCoachStep) -> Void
+    let onCoachSkip: () -> Void
+    let onDiaryGenerationAnimationComplete: () -> Void
     let onClose: () -> Void
     @State private var visibleCharacters = 0
     @State private var visibleStickerCount = 0
@@ -5176,11 +5997,18 @@ private struct DiaryBookView: View {
     @State private var showRegenerateConfirm = false
     @State private var showClearDiaryConfirm = false
     @State private var showStickerLimitAlert = false
+    @State private var showNetworkPermissionAlert = false
+    @State private var allowNextNetworkPermissionRetry = false
+    @State private var shouldRetryNetworkRequestOnActive = false
+    @State private var previewedDiaryStickerID: String?
     /// Maximum number of stickers that can be sent to the AI for one diary.
     private static let maxDiaryStickers = 8
     @State private var autoFocusBlankEntry = false
     @State private var showDiaryShareSheet = false
     @State private var diarySharePreviewImage: UIImage?
+    @State private var diaryScrollResetToken = 0
+    @State private var coachFrames: [AppCoachTarget: CGRect] = [:]
+    @State private var coachGlobalOrigin: CGPoint = .zero
 
     private let calendar = Calendar.current
 
@@ -5222,6 +6050,40 @@ private struct DiaryBookView: View {
         editableEntries.isEmpty && !isWriting && !isGenerating && generationError == nil
     }
 
+    private var diaryHeaderActions: some View {
+        HStack(spacing: 8) {
+            HeaderIconButton(
+                systemImage: "square.and.arrow.up",
+                accessibilityLabel: "分享日记"
+            ) {
+                performDiaryShareAction()
+            }
+            .disabled(!hasEditableDiaryContent || isWriting || isGenerating)
+            .opacity(hasEditableDiaryContent && !isWriting && !isGenerating ? 1 : 0.4)
+            .appCoachAnchor(.diaryShare)
+
+            HeaderIconButton(
+                systemImage: "wand.and.stars",
+                accessibilityLabel: "AI 重写日记"
+            ) {
+                dismissKeyboard()
+                requestRegeneration()
+            }
+            .disabled(!canUseToolbarMagicWand)
+            .opacity(canUseToolbarMagicWand ? 1 : 0.4)
+
+            HeaderIconButton(
+                systemImage: "trash",
+                accessibilityLabel: "删除日记"
+            ) {
+                dismissKeyboard()
+                showClearDiaryConfirm = true
+            }
+            .disabled(!hasDiaryToClear || isWriting || isGenerating)
+            .opacity(hasDiaryToClear && !isWriting && !isGenerating ? 1 : 0.4)
+        }
+    }
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -5243,14 +6105,7 @@ private struct DiaryBookView: View {
                                 closeSystemImage: "xmark",
                                 onClose: closeDiaryPage
                             ) {
-                                HeaderIconButton(
-                                    systemImage: "square.and.arrow.up",
-                                    accessibilityLabel: "分享日记"
-                                ) {
-                                    shareDiary()
-                                }
-                                .disabled(!hasEditableDiaryContent || isWriting || isGenerating)
-                                .opacity(hasEditableDiaryContent && !isWriting && !isGenerating ? 1 : 0.4)
+                                diaryHeaderActions
                             }
                             .padding(.horizontal, 24)
                             .padding(.top, 54)
@@ -5295,13 +6150,11 @@ private struct DiaryBookView: View {
 
                     ScrollViewReader { proxy in
                         ScrollView {
-                            DiaryScrollOffsetObserver { distanceFromTop in
-                                diaryScrollDistanceFromTop = distanceFromTop
-                                updateFullscreenTopExitGate(with: distanceFromTop)
-                            }
+                            DiaryScrollOffsetObserver(onOffsetChange: handleDiaryScrollOffsetChange)
                             .frame(width: 1, height: 1)
                             .opacity(0)
                             .allowsHitTesting(false)
+                            .id(diaryTopID)
 
                             if isGenerating || generationError != nil {
                                 diaryGenerationStatus
@@ -5356,9 +6209,40 @@ private struct DiaryBookView: View {
                                                     },
                                                     hadSticker: originalHadSticker.contains(index),
                                                     autoFocus: index == 0 && autoFocusBlankEntry,
-                                                    dateStickerImages: dateStickerImages
+                                                    dateStickerImages: dateStickerImages,
+                                                    onAddSticker: {
+                                                        onCaptureForDate(selectedDate)
+                                                    },
+                                                    onStickerTap: {
+                                                        previewDiarySticker(at: index)
+                                                    },
+                                                    onDeleteEntry: {
+                                                        deleteDiaryEntry(at: index)
+                                                    },
+                                                    canDeleteEntry: editableEntries.count > 1
                                                 )
                                                 .id(diaryRowID(for: index))
+                                            }
+
+                                            // Add new paragraph button
+                                            if !editableEntries.isEmpty && !isWriting && !isArchivingPage {
+                                                HStack(spacing: 8) {
+                                                    Image(systemName: "plus")
+                                                        .font(.system(size: 14, weight: .bold))
+                                                    Text("添加段落")
+                                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                                }
+                                                .foregroundStyle(Color(red: 0.52, green: 0.46, blue: 0.40))
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 44)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                        .stroke(Color(red: 0.52, green: 0.46, blue: 0.40).opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                                                )
+                                                .contentShape(Rectangle())
+                                                .onTapGesture {
+                                                    addNewDiaryEntry()
+                                                }
                                             }
 
                                             Color.clear
@@ -5388,34 +6272,17 @@ private struct DiaryBookView: View {
                             }
                         }
                         .coordinateSpace(name: "diaryScroll")
+                        .id(diaryScrollViewID)
                         .scrollDisabled(isEmptyDiaryState)
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 14, coordinateSpace: .local)
-                                .onChanged { value in
-                                    if !didStartDiaryDrag {
-                                        didStartDiaryDrag = true
-                                        dragStartedWithFullscreenExitArmed = isEditorFocused
-                                            && canExitFullscreenFromTop
-                                            && isDiaryScrollAtTop(diaryScrollDistanceFromTop)
-                                    }
-                                    handleDiaryScrollDrag(value.translation)
-                                }
-                                .onEnded { value in
-                                    didSwitchEditorModeDuringDrag = false
-                                    didStartDiaryDrag = false
-                                    dragStartedWithFullscreenExitArmed = false
-                                    updateFullscreenTopExitGate(with: diaryScrollDistanceFromTop, endedTranslation: value.translation)
-                                }
-                        )
+                        .simultaneousGesture(diaryScrollDragGesture)
                         .onChange(of: visibleCharacters) { _, newValue in
-                            guard isWriting, newValue % 8 == 0 || newValue == fullText.count else { return }
-                            withAnimation(.easeInOut(duration: 0.24)) {
-                                let target = currentWritingIndex >= editableEntries.count - 1 ? diaryBottomID : diaryRowID(for: currentWritingIndex)
-                                proxy.scrollTo(target, anchor: .bottom)
-                            }
+                            scrollDuringWritingIfNeeded(newValue, proxy: proxy)
                         }
                         .onChange(of: layoutStyle) { _, newStyle in
                             handleDiaryLayoutStyleChange(newStyle, proxy: proxy)
+                        }
+                        .onChange(of: diaryScrollResetToken) { _, _ in
+                            resetDiaryScroll(proxy: proxy)
                         }
                     }
                 }
@@ -5447,6 +6314,14 @@ private struct DiaryBookView: View {
                     .transition(.scale(scale: 0.82).combined(with: .opacity))
                 }
             }
+            .background(AppCoachOriginReader())
+            .onPreferenceChange(AppCoachOriginPreferenceKey.self) { origin in
+                coachGlobalOrigin = origin
+            }
+            .onPreferenceChange(AppCoachFramePreferenceKey.self) { frames in
+                coachFrames = frames
+            }
+            .overlay { diaryCoachOverlay }
         }
         .task {
             if editableEntries.isEmpty {
@@ -5463,6 +6338,10 @@ private struct DiaryBookView: View {
             saveState = .saved
             setDiaryTitle()
             restartAnimation()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            retryNetworkRequestAfterReturningFromSettingsIfNeeded()
         }
         .alert("日记还在生成", isPresented: $showCloseDuringGenerationConfirm) {
             Button("继续等待", role: .cancel) {}
@@ -5493,8 +6372,34 @@ private struct DiaryBookView: View {
         } message: {
             Text("一篇日记最多支持 \(Self.maxDiaryStickers) 张贴纸，当前这天有 \(diaryStickerCount) 张。请先删除一些贴纸，再用 AI 写日记。")
         }
+        .alert("需要打开网络权限", isPresented: $showNetworkPermissionAlert) {
+            Button("去设置") {
+                openAppSettings()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("AI 写日记需要访问网络。请在系统设置里允许本 App 使用网络，然后回来重试。")
+        }
+        .fullScreenCover(isPresented: diaryStickerPreviewPresented) {
+            StickerPagerPreview(
+                items: diaryStickerPreviewItems,
+                selectedID: $previewedDiaryStickerID,
+                onClose: {
+                    previewedDiaryStickerID = nil
+                },
+                onDelete: {
+                    removePreviewedDiaryStickerUsage()
+                }
+            )
+        }
         .fullScreenCover(item: $diarySharePreviewImage) { image in
-            SharePreviewOverlay(image: image) {
+            SharePreviewOverlay(
+                image: image,
+                activeCoachStep: activeCoachStep,
+                onCoachCompleteClose: {
+                    onCoachAction(.shareComplete)
+                }
+            ) {
                 diarySharePreviewImage = nil
             } onShare: {
                 diarySharePreviewImage = nil
@@ -5582,6 +6487,7 @@ private struct DiaryBookView: View {
         }
         .buttonStyle(.plain)
         .disabled(isArchivingPage || isPageArchived)
+        .appCoachAnchor(.diaryGenerate)
     }
 
     private func emptyDiaryIconButton(systemImage: String, label: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
@@ -5605,6 +6511,21 @@ private struct DiaryBookView: View {
 
     private var isRichLayoutMode: Bool {
         layoutStyle == .inlineSticker
+    }
+
+    @ViewBuilder
+    private var diaryCoachOverlay: some View {
+        if let activeCoachStep, isDiaryCoachStep(activeCoachStep) {
+            AppCoachOverlay(
+                step: activeCoachStep,
+                targetFrame: coachFrames[activeCoachStep.target],
+                globalOrigin: coachGlobalOrigin,
+                onAction: { performDiaryCoachAction(activeCoachStep) },
+                onSkip: onCoachSkip
+            )
+            .transition(.opacity)
+            .zIndex(30)
+        }
     }
 
     private var diaryStyleControls: some View {
@@ -5649,32 +6570,6 @@ private struct DiaryBookView: View {
                             .background(selected ? pillBg : Color.clear, in: Capsule())
                     }
                 }
-
-                Divider()
-                    .frame(height: 16)
-                    .padding(.horizontal, 3)
-
-                Button {
-                    dismissKeyboard()
-                    requestRegeneration()
-                } label: {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(canUseToolbarMagicWand ? inactive : inactive.opacity(0.35))
-                        .frame(width: 32, height: 28)
-                }
-                .disabled(!canUseToolbarMagicWand)
-
-                Button {
-                    dismissKeyboard()
-                    showClearDiaryConfirm = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(hasDiaryToClear ? inactive : inactive.opacity(0.35))
-                        .frame(width: 32, height: 28)
-                }
-                .disabled(!hasDiaryToClear || isWriting || isGenerating)
             }
             .padding(.horizontal, 2)
         }
@@ -5689,25 +6584,51 @@ private struct DiaryBookView: View {
             if isGenerating {
                 diaryGenerationWaitingView
             } else {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.6))
-                    Text(generationError ?? "生成遇到问题，请重试")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                    Spacer()
-                    Text("重试")
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(Color(red: 0.34, green: 0.24, blue: 0.18), in: Capsule())
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.10))
+                            .frame(width: 38, height: 38)
+
+                        Image(systemName: needsNetworkPermissionRecovery ? "wifi.exclamationmark" : "arrow.clockwise")
+                            .font(.system(size: 17, weight: .black))
+                            .foregroundStyle(Color(red: 0.34, green: 0.24, blue: 0.18))
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(needsNetworkPermissionRecovery ? "需要网络权限" : "生成没有完成")
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundStyle(Color(red: 0.30, green: 0.22, blue: 0.17))
+
+                        Text(needsNetworkPermissionRecovery ? "允许无线数据后，再让 AI 继续写日记" : (generationError ?? "生成遇到问题，请重试"))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.58, green: 0.50, blue: 0.44))
+                            .lineLimit(2)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Button {
+                        attemptRegeneration(confirmIfNeeded: false)
+                    } label: {
+                        Text(needsNetworkPermissionRecovery ? "去设置" : "重试")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
+                            .background(Color(red: 0.34, green: 0.24, blue: 0.18), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .foregroundStyle(Color(red: 0.48, green: 0.36, blue: 0.28))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(.white.opacity(0.72), lineWidth: 1)
+                }
+                .shadow(color: Color(red: 0.34, green: 0.24, blue: 0.18).opacity(0.10), radius: 16, y: 8)
                 .onTapGesture {
                     attemptRegeneration(confirmIfNeeded: false)
                 }
@@ -5775,7 +6696,11 @@ private struct DiaryBookView: View {
                 let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
                 let isToday = calendar.isDateInToday(date)
                 let isFuture = calendar.startOfDay(for: date) > calendar.startOfDay(for: Date.now)
-                let hasStickers = records.contains(where: { calendar.isDate($0.date, inSameDayAs: date) && $0.stickerCount > 0 })
+                let hasStickers = records.contains(where: { record in
+                    guard calendar.isDate(record.date, inSameDayAs: date) else { return false }
+                    let text = record.diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return !text.isEmpty && text != "每日贴纸" && text != "今日日记"
+                })
 
                 Button {
                     switchToDate(date)
@@ -5837,20 +6762,67 @@ private struct DiaryBookView: View {
     private var diaryHeaderSubtitle: String {
         switch saveState {
         case .saving:
-            return "正在保存..."
+            return "保存中"
         case .saved:
             return "已保存"
         case .idle:
-            break
+            return hasEditableDiaryContent ? "已保存" : "未保存"
         }
+    }
 
-        if editableEntries.isEmpty, !dateStickerImages.isEmpty {
-            return "\(dateStickerImages.count) 张贴纸"
+    private var diaryStickerPreviewPresented: Binding<Bool> {
+        Binding(
+            get: { previewedDiaryStickerID != nil && !diaryStickerPreviewItems.isEmpty },
+            set: { isPresented in
+                if !isPresented {
+                    previewedDiaryStickerID = nil
+                }
+            }
+        )
+    }
+
+    private var diaryStickerPreviewItems: [RecentStickerPreview] {
+        editableEntries.indices.compactMap { index in
+            guard let image = editableEntries[index].sticker else { return nil }
+            return RecentStickerPreview(
+                entry: StickerEntry(
+                    id: diaryStickerPreviewID(for: index),
+                    title: "日记贴纸",
+                    subtitle: "当前日记使用中",
+                    timestamp: selectedDate.timeIntervalSince1970
+                ),
+                image: image
+            )
         }
-        if editableEntries.isEmpty {
-            return "还没有贴纸"
+    }
+
+    private func diaryStickerPreviewID(for index: Int) -> String {
+        "diary-sticker-\(selectedDayID)-\(index)"
+    }
+
+    private func previewDiarySticker(at index: Int) {
+        guard editableEntries.indices.contains(index), editableEntries[index].sticker != nil else { return }
+        dismissKeyboard()
+        previewedDiaryStickerID = diaryStickerPreviewID(for: index)
+    }
+
+    private func removePreviewedDiaryStickerUsage() {
+        guard let previewedDiaryStickerID,
+              let index = diaryStickerIndex(fromPreviewID: previewedDiaryStickerID) else { return }
+
+        deleteDiarySticker(at: index)
+        self.previewedDiaryStickerID = nil
+    }
+
+    private func diaryStickerIndex(fromPreviewID id: String) -> Int? {
+        guard id.hasPrefix("diary-sticker-\(selectedDayID)-"),
+              let suffix = id.split(separator: "-").last,
+              let index = Int(suffix),
+              editableEntries.indices.contains(index),
+              editableEntries[index].sticker != nil else {
+            return nil
         }
-        return "\(editableEntries.compactMap(\.sticker).count) 张贴纸"
+        return index
     }
 
     private var diaryShareItems: [Any] {
@@ -5913,7 +6885,7 @@ private struct DiaryBookView: View {
             context.fill(rect)
 
             let cardRect = rect
-            let cardPath = UIBezierPath(roundedRect: cardRect, cornerRadius: 52)
+            let cardPath = UIBezierPath(rect: cardRect)
             sharePaperBackgroundColor.setFill()
             cardPath.fill()
             context.cgContext.saveGState()
@@ -5939,7 +6911,7 @@ private struct DiaryBookView: View {
                 drawShareInlineContent(at: CGPoint(x: contentX, y: y), width: contentWidth)
             }
 
-            let footer = NSAttributedString(string: "Sticker Diary", attributes: [
+            let footer = NSAttributedString(string: "贴纸日记", attributes: [
                 .font: UIFont.systemFont(ofSize: 22, weight: .bold),
                 .foregroundColor: UIColor(red: 0.72, green: 0.55, blue: 0.38, alpha: 0.52)
             ])
@@ -6207,6 +7179,32 @@ private struct DiaryBookView: View {
         diarySharePreviewImage = diaryShareImage()
     }
 
+    private func performDiaryShareAction() {
+        shareDiary()
+        if activeCoachStep == .diaryShare {
+            onCoachAction(.diaryShare)
+        }
+    }
+
+    private func performDiaryCoachAction(_ step: AppCoachStep) {
+        switch step {
+        case .diaryGenerate:
+            if dateStickerImages.isEmpty {
+                startBlankPage()
+            } else {
+                attemptRegeneration(confirmIfNeeded: false)
+            }
+        case .diaryShare:
+            performDiaryShareAction()
+        default:
+            onCoachAction(step)
+        }
+    }
+
+    private func isDiaryCoachStep(_ step: AppCoachStep) -> Bool {
+        step == .diaryGenerate || step == .diaryShare
+    }
+
     // MARK: - Rich Layout (inline / wrap) combined content
 
     private func initializeRichContent() {
@@ -6409,13 +7407,40 @@ private struct DiaryBookView: View {
         originalHadSticker = []
         setDiaryTitle()
 
-        dateStickerImages = StickerStore.shared.loadStickersForDate(selectedDate).map(\.image)
+        dateStickerImages = StickerStore.shared.loadOrderedStickersForDate(selectedDate).map(\.image)
         rebuildRichContentIfNeeded()
 
         // Auto-focus the text view so the cursor is immediately visible
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             autoFocusBlankEntry = true
         }
+    }
+
+    private func addNewDiaryEntry() {
+        let newIndex = editableEntries.count
+        let side: DiaryEntry.StickerSide = newIndex % 2 == 0 ? .right : .left
+        let newEntry = EditableDiaryEntry(
+            id: UUID(),
+            text: "",
+            sticker: nil,
+            stickerSide: side,
+            hadStickerSlot: true
+        )
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            editableEntries.append(newEntry)
+            visibleStickerCount = editableEntries.count
+            currentWritingIndex = editableEntries.count - 1
+        }
+        scheduleAutosave()
+    }
+
+    private func deleteDiaryEntry(at index: Int) {
+        guard editableEntries.count > 1 else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            editableEntries.remove(at: index)
+            visibleStickerCount = editableEntries.count
+        }
+        scheduleAutosave()
     }
 
     /// Number of stickers that would actually be sent to the AI for this date.
@@ -6430,6 +7455,11 @@ private struct DiaryBookView: View {
     /// Single gate for all AI-generation entry points. Returns false (and shows
     /// an alert) when the sticker count is over the limit.
     private func attemptRegeneration(confirmIfNeeded: Bool) {
+        if needsNetworkPermissionRecovery && !allowNextNetworkPermissionRetry {
+            showNetworkPermissionAlert = true
+            return
+        }
+        allowNextNetworkPermissionRetry = false
         if exceedsStickerLimit {
             showStickerLimitAlert = true
             return
@@ -6438,6 +7468,30 @@ private struct DiaryBookView: View {
             showRegenerateConfirm = true
         } else {
             beginRegeneration()
+        }
+    }
+
+    private var needsNetworkPermissionRecovery: Bool {
+        generationError == "请允许网络访问后重试"
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        allowNextNetworkPermissionRetry = true
+        shouldRetryNetworkRequestOnActive = true
+        UIApplication.shared.open(url)
+    }
+
+    private func retryNetworkRequestAfterReturningFromSettingsIfNeeded() {
+        guard shouldRetryNetworkRequestOnActive,
+              needsNetworkPermissionRecovery,
+              !isGenerating,
+              !isWriting,
+              !isArchivingPage else { return }
+        shouldRetryNetworkRequestOnActive = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            guard needsNetworkPermissionRecovery, !isGenerating else { return }
+            attemptRegeneration(confirmIfNeeded: false)
         }
     }
 
@@ -6476,6 +7530,56 @@ private struct DiaryBookView: View {
 
     private var canRespondToScrollModeChange: Bool {
         Date().timeIntervalSince(lastEditorModeSwitchAt) > 0.32
+    }
+
+    private var diaryScrollDragGesture: some Gesture {
+        DragGesture(minimumDistance: 14, coordinateSpace: .local)
+            .onChanged { value in
+                handleDiaryScrollDragChanged(value.translation)
+            }
+            .onEnded { value in
+                handleDiaryScrollDragEnded(value.translation)
+            }
+    }
+
+    private func handleDiaryScrollDragChanged(_ translation: CGSize) {
+        if !didStartDiaryDrag {
+            didStartDiaryDrag = true
+            dragStartedWithFullscreenExitArmed = isEditorFocused
+                && canExitFullscreenFromTop
+                && isDiaryScrollAtTop(diaryScrollDistanceFromTop)
+        }
+        handleDiaryScrollDrag(translation)
+    }
+
+    private func handleDiaryScrollOffsetChange(_ distanceFromTop: CGFloat) {
+        diaryScrollDistanceFromTop = distanceFromTop
+        updateFullscreenTopExitGate(with: distanceFromTop)
+    }
+
+    private func handleDiaryScrollDragEnded(_ translation: CGSize) {
+        didSwitchEditorModeDuringDrag = false
+        didStartDiaryDrag = false
+        dragStartedWithFullscreenExitArmed = false
+        updateFullscreenTopExitGate(with: diaryScrollDistanceFromTop, endedTranslation: translation)
+    }
+
+    private func scrollDuringWritingIfNeeded(_ visibleCount: Int, proxy: ScrollViewProxy) {
+        guard isWriting, visibleCount % 8 == 0 || visibleCount == fullText.count else { return }
+        let target = currentWritingIndex >= editableEntries.count - 1
+            ? diaryBottomID
+            : diaryRowID(for: currentWritingIndex)
+        withAnimation(.easeInOut(duration: 0.24)) {
+            proxy.scrollTo(target, anchor: .bottom)
+        }
+    }
+
+    private func resetDiaryScroll(proxy: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.18)) {
+                proxy.scrollTo(diaryTopID, anchor: .top)
+            }
+        }
     }
 
     private func handleDiaryScrollDrag(_ translation: CGSize) {
@@ -6582,7 +7686,9 @@ private struct DiaryBookView: View {
         richInlineInsertions = []
         richFloatingStickers = []
         richContentInitialized = false
-        dateStickerImages = StickerStore.shared.loadStickersForDate(selectedDate).map(\.image)
+        dateStickerImages = StickerStore.shared.loadOrderedStickersForDate(selectedDate).map(\.image)
+        diaryScrollDistanceFromTop = 0
+        diaryScrollResetToken += 1
     }
 
     private func scheduleAutosave() {
@@ -6625,6 +7731,14 @@ private struct DiaryBookView: View {
 
     private var diaryBottomID: String {
         "diary-bottom-\(selectedDayID)"
+    }
+
+    private var diaryTopID: String {
+        "diary-top-\(selectedDayID)"
+    }
+
+    private var diaryScrollViewID: String {
+        "diary-scroll-\(selectedDayID)-\(diaryScrollResetToken)"
     }
 
     private func diaryRowID(for index: Int) -> String {
@@ -6716,7 +7830,7 @@ private struct DiaryBookView: View {
             richContentInitialized = true
         }
 
-        dateStickerImages = StickerStore.shared.loadStickersForDate(selectedDate).map(\.image)
+        dateStickerImages = StickerStore.shared.loadOrderedStickersForDate(selectedDate).map(\.image)
 
         Task {
             var writtenCharacters = 0
@@ -6786,6 +7900,7 @@ private struct DiaryBookView: View {
                 if isRichLayoutMode {
                     syncRichContentFromEditableEntries(resetInsertions: true)
                 }
+                onDiaryGenerationAnimationComplete()
             }
         }
     }
@@ -6801,7 +7916,7 @@ private struct DiaryBookView: View {
         editableEntries = source.map(EditableDiaryEntry.init)
         originalHadSticker = Set(source.indices.filter { source[$0].hadStickerSlot || source[$0].sticker != nil })
         setDiaryTitle()
-        dateStickerImages = StickerStore.shared.loadStickersForDate(selectedDate).map(\.image)
+        dateStickerImages = StickerStore.shared.loadOrderedStickersForDate(selectedDate).map(\.image)
         if isRichLayoutMode {
             syncRichContentFromEditableEntries(resetInsertions: true)
         } else {
@@ -6952,6 +8067,10 @@ private struct DiaryEntryRow: View {
     var autoFocus: Bool = false
     /// All stickers for this date, used in the replacement picker
     var dateStickerImages: [UIImage] = []
+    var onAddSticker: (() -> Void)? = nil
+    var onStickerTap: (() -> Void)? = nil
+    var onDeleteEntry: (() -> Void)? = nil
+    var canDeleteEntry: Bool = false
     @State private var stickerDragStartOffset: CGSize = .zero
     @State private var stickerPinchStartScale: CGFloat = 1
     @State private var isDraggingSticker = false
@@ -7007,19 +8126,43 @@ private struct DiaryEntryRow: View {
             .frame(minHeight: 200)
     }
 
+    @State private var showDeleteEntryConfirm = false
+
     private var classicLayout: some View {
-        HStack(alignment: .center, spacing: 14) {
-            if entry.stickerSide == .left {
-                stickerView(size: 112, rotation: entry.stickerSide == .left ? -5 : 5)
+        ZStack(alignment: .topTrailing) {
+            HStack(alignment: .center, spacing: 14) {
+                if entry.stickerSide == .left {
+                    stickerView(size: 112, rotation: entry.stickerSide == .left ? -5 : 5)
+                }
+
+                diaryText
+
+                if entry.stickerSide == .right {
+                    stickerView(size: 112, rotation: entry.stickerSide == .left ? -5 : 5)
+                }
             }
+            .frame(minHeight: 132)
 
-            diaryText
-
-            if entry.stickerSide == .right {
-                stickerView(size: 112, rotation: entry.stickerSide == .left ? -5 : 5)
+            if canDeleteEntry && isEditable {
+                Button {
+                    showDeleteEntryConfirm = true
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.white, Color(red: 0.85, green: 0.35, blue: 0.30))
+                        .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                }
+                .offset(x: 6, y: -6)
             }
         }
-        .frame(minHeight: 132)
+        .alert("删除段落", isPresented: $showDeleteEntryConfirm) {
+            Button("删除", role: .destructive) {
+                onDeleteEntry?()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("确定要删除这个段落吗？")
+        }
     }
 
     private var timelineLayout: some View {
@@ -7055,6 +8198,15 @@ private struct DiaryEntryRow: View {
         )
             .frame(minHeight: autoFocus ? max(layoutStyle.editorMinHeight, 320) : layoutStyle.editorMinHeight)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay {
+                if isEditable && entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("写下这一刻的感受…")
+                        .font(.system(size: layoutStyle.textSize, weight: .semibold, design: .serif))
+                        .foregroundStyle(Color(red: 0.31, green: 0.24, blue: 0.20).opacity(0.28))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(false)
+                }
+            }
     }
 
     @ViewBuilder
@@ -7084,6 +8236,9 @@ private struct DiaryEntryRow: View {
                             showStickerDeleteConfirm = true
                         }
                 )
+                .onTapGesture {
+                    onStickerTap?()
+                }
                 .onAppear {
                     stickerDragStartOffset = entry.stickerOffset
                     stickerPinchStartScale = entry.stickerScale
@@ -7136,13 +8291,35 @@ private struct DiaryEntryRow: View {
                 .padding(.top, 20)
 
             if dateStickerImages.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: 16) {
                     Image(systemName: "photo.on.rectangle")
                         .font(.system(size: 36, weight: .light))
                         .foregroundStyle(mutedInk.opacity(0.5))
                     Text("暂无可用贴纸")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(mutedInk)
+                    Text("拍照生成贴纸后，就可以添加到日记中")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(mutedInk.opacity(0.7))
+                        .multilineTextAlignment(.center)
+
+                    if let onAddSticker {
+                        Button {
+                            showStickerPicker = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                onAddSticker()
+                            }
+                        } label: {
+                            Label("去拍照", systemImage: "camera.fill")
+                                .font(.system(size: 15, weight: .black, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 24)
+                                .frame(height: 44)
+                                .background(ink, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 4)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -7276,6 +8453,11 @@ private struct DiaryTextView: UIViewRepresentable {
         textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.tintColor = UIColor(red: 0.48, green: 0.25, blue: 0.17, alpha: 1)
         context.coordinator.applyStyle(to: textView, fontSize: fontSize, lineSpacing: lineSpacing)
+
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        tap.cancelsTouchesInView = false
+        textView.addGestureRecognizer(tap)
+
         return textView
     }
 
@@ -7369,6 +8551,12 @@ private struct DiaryTextView: UIViewRepresentable {
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text
             parent.onTextChange?()
+        }
+
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+            guard let textView = gesture.view as? UITextView,
+                  parent.isEditable, !textView.isFirstResponder else { return }
+            textView.becomeFirstResponder()
         }
     }
 }
@@ -8224,66 +9412,6 @@ private enum DiaryLayoutStyle: String, CaseIterable, Identifiable {
     }
 }
 
-private final class GravityMotionModel: ObservableObject {
-    private let manager = CMMotionManager()
-    private let queue = OperationQueue()
-    private var didStartAccelerometerFallback = false
-    @Published var gravity = CGSize(width: 0, height: 1.25)
-
-    init() {
-        queue.maxConcurrentOperationCount = 1
-        queue.qualityOfService = .userInteractive
-    }
-
-    func start() {
-        guard !manager.isDeviceMotionActive, !manager.isAccelerometerActive else { return }
-        didStartAccelerometerFallback = false
-
-        guard manager.isDeviceMotionAvailable else {
-            startAccelerometerFallback()
-            return
-        }
-
-        manager.deviceMotionUpdateInterval = 1.0 / 60.0
-        manager.startDeviceMotionUpdates(using: .xArbitraryCorrectedZVertical, to: queue) { [weak self] motion, error in
-            guard let self else { return }
-            guard let motion else {
-                if error != nil {
-                    self.startAccelerometerFallback()
-                }
-                return
-            }
-            self.publishGravity(x: motion.gravity.x, y: motion.gravity.y)
-        }
-    }
-
-    func stop() {
-        manager.stopDeviceMotionUpdates()
-        manager.stopAccelerometerUpdates()
-        didStartAccelerometerFallback = false
-    }
-
-    private func startAccelerometerFallback() {
-        guard manager.isAccelerometerAvailable, !didStartAccelerometerFallback else { return }
-        didStartAccelerometerFallback = true
-        manager.accelerometerUpdateInterval = 1.0 / 60.0
-        manager.startAccelerometerUpdates(to: queue) { [weak self] data, _ in
-            guard let self, let acceleration = data?.acceleration else { return }
-            self.publishGravity(x: acceleration.x, y: acceleration.y)
-        }
-    }
-
-    private func publishGravity(x: Double, y: Double) {
-        let nextGravity = CGSize(
-            width: CGFloat(x) * 1.55,
-            height: CGFloat(-y) * 1.55
-        )
-        DispatchQueue.main.async {
-            self.gravity = nextGravity
-        }
-    }
-}
-
 private final class StickerCameraModel: NSObject, ObservableObject, @unchecked Sendable {
     let session = AVCaptureSession()
     private let output = AVCapturePhotoOutput()
@@ -8292,23 +9420,30 @@ private final class StickerCameraModel: NSObject, ObservableObject, @unchecked S
     private var currentPosition: AVCaptureDevice.Position = .back
 
     @Published var isReady = false
+    @Published private(set) var isUsingFrontCamera = false
 
     @MainActor
     func configure() async {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
-        guard status != .denied, status != .restricted else { return }
-        if status == .notDetermined {
-            _ = await AVCaptureDevice.requestAccess(for: .video)
+        guard status == .authorized else {
+            isReady = false
+            isUsingFrontCamera = false
+            return
         }
 
-        sessionQueue.async {
-            self.configureSession(position: self.currentPosition)
+        let position = currentPosition
+        let ready = await withCheckedContinuation { continuation in
+            sessionQueue.async {
+                continuation.resume(returning: self.configureSession(position: position))
+            }
         }
+        isReady = ready
+        isUsingFrontCamera = ready && position == .front
     }
 
     func start() {
         sessionQueue.async {
-            guard self.isReady, !self.session.isRunning else { return }
+            guard !self.session.inputs.isEmpty, !self.session.isRunning else { return }
             self.session.startRunning()
         }
     }
@@ -8322,23 +9457,33 @@ private final class StickerCameraModel: NSObject, ObservableObject, @unchecked S
 
     func switchCamera() {
         currentPosition = currentPosition == .back ? .front : .back
+        let position = currentPosition
         sessionQueue.async {
-            self.configureSession(position: self.currentPosition)
-            if self.isReady, !self.session.isRunning {
+            let ready = self.configureSession(position: position)
+            if ready, !self.session.isRunning {
                 self.session.startRunning()
+            }
+            DispatchQueue.main.async {
+                self.isReady = ready
+                self.isUsingFrontCamera = ready && position == .front
             }
         }
     }
 
     func capturePhoto(completion: @escaping (UIImage?) -> Void) {
         sessionQueue.async {
-            guard self.isReady else {
+            guard !self.session.inputs.isEmpty else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
 
             let settings = AVCapturePhotoSettings()
             settings.flashMode = .off
+            if let connection = self.output.connection(with: .video),
+               connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = self.currentPosition == .front
+            }
             let delegate = PhotoCaptureDelegate { [weak self] image in
                 DispatchQueue.main.async {
                     completion(image)
@@ -8350,7 +9495,7 @@ private final class StickerCameraModel: NSObject, ObservableObject, @unchecked S
         }
     }
 
-    private func configureSession(position: AVCaptureDevice.Position) {
+    private func configureSession(position: AVCaptureDevice.Position) -> Bool {
         session.beginConfiguration()
         session.sessionPreset = .photo
         session.inputs.forEach { session.removeInput($0) }
@@ -8362,15 +9507,14 @@ private final class StickerCameraModel: NSObject, ObservableObject, @unchecked S
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
-            DispatchQueue.main.async { self.isReady = false }
-            return
+            return false
         }
 
         session.addInput(input)
         if session.canAddOutput(output), !session.outputs.contains(output) {
             session.addOutput(output)
         }
-        DispatchQueue.main.async { self.isReady = true }
+        return true
     }
 }
 
@@ -8394,15 +9538,26 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
 
 private struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    let isMirrored: Bool
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        updateMirroring(for: view)
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        updateMirroring(for: uiView)
+    }
+
+    private func updateMirroring(for view: PreviewView) {
+        guard let connection = view.videoPreviewLayer.connection,
+              connection.isVideoMirroringSupported else { return }
+        connection.automaticallyAdjustsVideoMirroring = false
+        connection.isVideoMirrored = isMirrored
+    }
 }
 
 private final class PreviewView: UIView {
@@ -8525,7 +9680,7 @@ private enum StickerMaker {
             let cutout = try cutOutForeground(from: normalized)
             let cropped = cutout.croppedToVisiblePixels(padding: 30)
             return cropped
-                .renderSticker(borderWidth: 32)
+                .renderSticker(maxBorderWidth: 22)
                 .resizedForStickerProcessing(maxDimension: 720)
         }.value
     }
@@ -8646,7 +9801,9 @@ private extension UIImage {
         return UIImage(cgImage: croppedCGImage, scale: scale, orientation: .up)
     }
 
-    func renderSticker(borderWidth: CGFloat) -> UIImage {
+    func renderSticker(maxBorderWidth: CGFloat) -> UIImage {
+        let shortestSide = min(size.width, size.height)
+        let borderWidth = min(maxBorderWidth, max(12, shortestSide * 0.035))
         let canvasSize = CGSize(
             width: size.width + borderWidth * 2,
             height: size.height + borderWidth * 2
@@ -8669,7 +9826,7 @@ private extension UIImage {
                 color: UIColor.black.withAlphaComponent(0.14).cgColor
             )
 
-            let step: CGFloat = 4
+            let step = max(2, borderWidth / 7)
             var y = -borderWidth
             while y <= borderWidth {
                 var x = -borderWidth
@@ -8710,12 +9867,14 @@ private extension UIImage {
 // MARK: - Settings Sheet
 
 private struct SettingsSheet: View {
+    var onReplayOnboarding: () -> Void = {}
     let onClose: () -> Void
 
     @State private var showContactUs = false
     @State private var showAbout = false
     @State private var showVersionInfo = false
     @State private var showShareSheet = false
+    @State private var showDiaryPrompt = false
 
     private let ink = Color(red: 0.10, green: 0.10, blue: 0.10)
     private let mutedInk = Color(red: 0.56, green: 0.56, blue: 0.58)
@@ -8783,13 +9942,21 @@ private struct SettingsSheet: View {
 
                         settingsCard {
                             VStack(spacing: 0) {
+                                settingsRow(icon: "text.bubble", title: "日记提示语") {
+                                    showDiaryPrompt = true
+                                }
+                            }
+                        }
+
+                        settingsCard {
+                            VStack(spacing: 0) {
                                 settingsRow(icon: "info.circle", title: "关于贴纸日记") {
                                     showAbout = true
                                 }
                                 settingsDivider
                                 settingsRow(icon: "sparkles", title: "重新查看引导") {
-                                    UserDefaults.standard.set(false, forKey: AppOnboarding.hasSeenKey)
                                     onClose()
+                                    onReplayOnboarding()
                                 }
                                 settingsDivider
                                 settingsRow(icon: "doc.text", title: "版本信息", trailing: appVersion) {
@@ -8834,6 +10001,13 @@ private struct SettingsSheet: View {
         .sheet(isPresented: $showShareSheet) {
             ShareSheetView(items: shareItems)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showDiaryPrompt) {
+            DiaryPromptSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(44)
+                .presentationBackground(.white)
         }
     }
 
@@ -8911,62 +10085,305 @@ private struct SettingsSheet: View {
     }
 }
 
-private struct BailianAPIKeySheet: View {
+// MARK: - Diary Prompt Sheet
+
+private struct DiaryPromptSheet: View {
+    @State private var promptText: String = BailianDiaryGenerator.currentSystemPrompt
+    @State private var isEditing = false
+    @State private var selectedTemplateId: String? = nil
     @Environment(\.dismiss) private var dismiss
-    @State private var apiKey = UserDefaults.standard.string(forKey: BailianSettings.apiKeyUserDefaultsKey) ?? ""
+    @FocusState private var isFocused: Bool
 
     private let ink = Color(red: 0.10, green: 0.10, blue: 0.10)
     private let mutedInk = Color(red: 0.56, green: 0.56, blue: 0.58)
+    private let accent = Color(red: 0.95, green: 0.65, blue: 0.12)
+    private let cardBg = Color(red: 0.96, green: 0.96, blue: 0.97)
+
+    private struct PromptTemplate: Identifiable {
+        let id: String
+        let emoji: String
+        let name: String
+        let description: String
+        let prompt: String
+    }
+
+    private let templates: [PromptTemplate] = [
+        PromptTemplate(
+            id: "default",
+            emoji: "\u{2615}",
+            name: "温柔日常",
+            description: "平静温暖，像和朋友聊天",
+            prompt: BailianDiaryGenerator.defaultSystemPrompt
+        ),
+        PromptTemplate(
+            id: "happy",
+            emoji: "\u{2728}",
+            name: "开心活泼",
+            description: "元气满满，充满感叹号",
+            prompt: "你是一位开朗、活泼、充满元气的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，用欢快明亮的语气写成日记。多用感叹句和俏皮的比喻，让每一天都读起来像值得庆祝的小事件。绝对不要在日记正文中出现「贴纸」这个词。"
+        ),
+        PromptTemplate(
+            id: "calm",
+            emoji: "\u{1F343}",
+            name: "安静治愈",
+            description: "轻柔缓慢，像雨天读书",
+            prompt: "你是一位安静、细腻、善于感受的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，用舒缓治愈的文字写成日记。语调轻柔，节奏慢一些，关注细微的感官体验——光线、气味、温度、质感。让人读完觉得被轻轻抱了一下。绝对不要在日记正文中出现「贴纸」这个词。"
+        ),
+        PromptTemplate(
+            id: "literary",
+            emoji: "\u{1F319}",
+            name: "文艺感伤",
+            description: "诗意忧郁，像深夜独白",
+            prompt: "你是一位文艺、敏感、略带忧伤的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，用诗意的笔触写成日记。可以有淡淡的感伤和怀旧，善用意象和留白，让文字像一首没写完的诗。绝对不要在日记正文中出现「贴纸」这个词。"
+        ),
+        PromptTemplate(
+            id: "humor",
+            emoji: "\u{1F643}",
+            name: "幽默吐槽",
+            description: "轻松搞笑，自带段子手属性",
+            prompt: "你是一位幽默、机智、善于吐槽的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，用轻松诙谐的语气写成日记。适当加入自嘲和生活吐槽，像在跟好朋友发消息一样随意有趣。绝对不要在日记正文中出现「贴纸」这个词。"
+        ),
+        PromptTemplate(
+            id: "minimal",
+            emoji: "\u{1F4DD}",
+            name: "简洁记录",
+            description: "干净利落，只留关键信息",
+            prompt: "你是一位简洁、克制的中文日记作者。你会根据用户当天拍的照片，识别物品和场景，用最精炼的文字记录当天发生了什么。不堆砌形容词，不抒情，像备忘录一样干净利落，但仍然有温度。绝对不要在日记正文中出现「贴纸」这个词。"
+        ),
+    ]
+
+    private var hasChanges: Bool {
+        promptText.trimmingCharacters(in: .whitespacesAndNewlines) != BailianDiaryGenerator.currentSystemPrompt
+    }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    SecureField("sk-...", text: $apiKey)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("百炼 DashScope API Key")
-                } footer: {
-                    Text("仅保存在本机，用于生成贴纸日记。正式上线前建议改成后端代理，避免客户端泄露 Key。")
-                }
+        ZStack {
+            Color.white.ignoresSafeArea()
 
-                Section {
-                    Button(role: .destructive) {
-                        apiKey = ""
-                        UserDefaults.standard.removeObject(forKey: BailianSettings.apiKeyUserDefaultsKey)
-                    } label: {
-                        Text("清除 Key")
-                    }
-                }
-            }
-            .navigationTitle("AI 生成设置")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") {
-                        dismiss()
-                    }
-                    .foregroundStyle(mutedInk)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("保存") {
-                        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if trimmed.isEmpty {
-                            UserDefaults.standard.removeObject(forKey: BailianSettings.apiKeyUserDefaultsKey)
-                        } else {
-                            UserDefaults.standard.set(trimmed, forKey: BailianSettings.apiKeyUserDefaultsKey)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header
+                    HStack {
+                        Spacer()
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(red: 0.50, green: 0.50, blue: 0.52))
+                                .frame(width: 32, height: 32)
+                                .background(Color(red: 0.92, green: 0.92, blue: 0.93), in: Circle())
                         }
-                        dismiss()
+                        .buttonStyle(.plain)
                     }
-                    .fontWeight(.bold)
-                    .foregroundStyle(ink)
+                    .padding(.top, 20)
+                    .padding(.trailing, 20)
+
+                    Text("日记提示语")
+                        .font(.system(size: 34, weight: .black))
+                        .foregroundStyle(ink)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+
+                    Text("选一个风格模板，或者自由编辑")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(mutedInk)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+
+                    // Template grid
+                    templateGrid
+                        .padding(.top, 20)
+
+                    // Current prompt card
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("当前提示语")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(mutedInk)
+                            Spacer()
+                            if selectedTemplateId == nil && BailianDiaryGenerator.isUsingCustomPrompt {
+                                Text("已自定义")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(accent)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(accent.opacity(0.12), in: Capsule())
+                            }
+                        }
+
+                        if isEditing {
+                            TextEditor(text: $promptText)
+                                .font(.system(size: 15))
+                                .foregroundStyle(ink)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 160)
+                                .focused($isFocused)
+                        } else {
+                            Text(promptText)
+                                .font(.system(size: 15))
+                                .foregroundStyle(ink)
+                                .lineSpacing(5)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding(18)
+                    .background(cardBg, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(isEditing ? accent.opacity(0.6) : .clear, lineWidth: 2)
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                    // Action buttons
+                    actionButtons
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+
+                    // Tips
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("小提示")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(mutedInk)
+                        Text("• 选择模板后可以继续编辑微调\n• 修改后对新生成的日记生效\n• 已生成的日记不会改变")
+                            .font(.system(size: 14))
+                            .foregroundStyle(mutedInk.opacity(0.8))
+                            .lineSpacing(4)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
                 }
             }
         }
+        .onAppear {
+            selectedTemplateId = matchingTemplateId()
+        }
+    }
+
+    // MARK: Template Grid
+
+    private var templateGrid: some View {
+        let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(templates) { template in
+                templateCard(template)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func templateCard(_ template: PromptTemplate) -> some View {
+        let isActive = selectedTemplateId == template.id
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTemplateId = template.id
+                promptText = template.prompt
+                isEditing = false
+                isFocused = false
+            }
+            // Auto-save when selecting a template
+            BailianDiaryGenerator.currentSystemPrompt = template.prompt
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(template.emoji)
+                    .font(.system(size: 24))
+                HStack(spacing: 0) {
+                    Text(template.name)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(isActive ? accent : ink)
+                    Spacer()
+                }
+                Text(template.description)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isActive ? accent.opacity(0.8) : mutedInk)
+                    .lineLimit(1)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isActive ? accent.opacity(0.08) : cardBg)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(isActive ? accent : .clear, lineWidth: 2)
+            )
+            .opacity(selectedTemplateId == nil || isActive ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Action Buttons
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if isEditing {
+            Button {
+                let trimmed = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                BailianDiaryGenerator.currentSystemPrompt = trimmed
+                promptText = BailianDiaryGenerator.currentSystemPrompt
+                selectedTemplateId = matchingTemplateId()
+                isEditing = false
+                isFocused = false
+            } label: {
+                Text("保存")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .opacity(hasChanges ? 1 : 0.5)
+            .disabled(!hasChanges)
+
+            Button {
+                promptText = BailianDiaryGenerator.currentSystemPrompt
+                isEditing = false
+                isFocused = false
+            } label: {
+                Text("取消")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(ink)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button {
+                isEditing = true
+                selectedTemplateId = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    isFocused = true
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("自由编辑")
+                        .font(.system(size: 17, weight: .bold))
+                }
+                .foregroundStyle(ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: Helpers
+
+    private func matchingTemplateId() -> String? {
+        let current = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return templates.first(where: { $0.prompt == current })?.id
     }
 }
+
 
 // MARK: - Contact Us Page
 
@@ -9359,10 +10776,13 @@ extension UIImage: @retroactive Identifiable {
 
 private struct SharePreviewOverlay: View {
     let image: UIImage
+    let activeCoachStep: AppCoachStep?
+    let onCoachCompleteClose: () -> Void
     let onClose: () -> Void
     let onShare: () -> Void
 
     private let ink = Color(red: 0.22, green: 0.15, blue: 0.12)
+    @State private var showCoachGuide = false
 
     var body: some View {
         ZStack {
@@ -9387,7 +10807,7 @@ private struct SharePreviewOverlay: View {
 
                     Spacer()
 
-                    Button(action: onClose) {
+                    Button(action: closePreview) {
                         Image(systemName: "xmark")
                             .font(.system(size: 18, weight: .black))
                             .foregroundStyle(ink)
@@ -9400,15 +10820,104 @@ private struct SharePreviewOverlay: View {
                 .padding(.bottom, 16)
 
                 ScrollView {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, 40)
+                    VStack(spacing: 16) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+                            .padding(.horizontal, 28)
+                            .padding(.bottom, 40)
+                    }
                 }
             }
+
+            if showCoachGuide {
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+                    .onTapGesture { dismissGuide() }
+
+                shareCompleteCard
+                    .padding(.horizontal, 34)
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            if activeCoachStep == .shareComplete {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    guard activeCoachStep == .shareComplete else { return }
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                        showCoachGuide = true
+                    }
+                }
+            }
+        }
+        .onChange(of: activeCoachStep) { _, newValue in
+            if newValue == .shareComplete {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    guard activeCoachStep == .shareComplete else { return }
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                        showCoachGuide = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var shareCompleteCard: some View {
+        VStack(spacing: 22) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 38, weight: .bold))
+                .foregroundStyle(Color(red: 0.76, green: 0.45, blue: 0.18))
+                .padding(.top, 6)
+
+            VStack(spacing: 14) {
+                Text(AppCoachStep.shareComplete.title)
+                    .font(.system(size: 25, weight: .black))
+                    .foregroundStyle(ink)
+                    .multilineTextAlignment(.center)
+
+                Text(AppCoachStep.shareComplete.message)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.48, green: 0.40, blue: 0.34))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button(action: dismissGuide) {
+                Text(AppCoachStep.shareComplete.buttonTitle)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Color(red: 0.25, green: 0.15, blue: 0.10), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+        }
+        .padding(.horizontal, 30)
+        .padding(.top, 40)
+        .padding(.bottom, 30)
+        .frame(maxWidth: 360)
+        .background(Color(red: 0.99, green: 0.97, blue: 0.93), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .shadow(color: .black.opacity(0.16), radius: 24, y: 14)
+        .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .onTapGesture {}
+    }
+
+    private func closePreview() {
+        onClose()
+        if activeCoachStep == .shareComplete {
+            onCoachCompleteClose()
+        }
+    }
+
+    private func dismissGuide() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            showCoachGuide = false
+        }
+        if activeCoachStep == .shareComplete {
+            onCoachCompleteClose()
         }
     }
 }

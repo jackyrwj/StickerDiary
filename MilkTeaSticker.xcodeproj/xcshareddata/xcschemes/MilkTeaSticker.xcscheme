@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AA500001"
-               BuildableName = "MilkTeaSticker.app"
+               BuildableName = "&#x8d34;&#x7eb8;&#x65e5;&#x8bb0;.app"
                BlueprintName = "MilkTeaSticker"
                ReferencedContainer = "container:MilkTeaSticker.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA500001"
-            BuildableName = "MilkTeaSticker.app"
+            BuildableName = "&#x8d34;&#x7eb8;&#x65e5;&#x8bb0;.app"
             BlueprintName = "MilkTeaSticker"
             ReferencedContainer = "container:MilkTeaSticker.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA500001"
-            BuildableName = "MilkTeaSticker.app"
+            BuildableName = "&#x8d34;&#x7eb8;&#x65e5;&#x8bb0;.app"
             BlueprintName = "MilkTeaSticker"
             ReferencedContainer = "container:MilkTeaSticker.xcodeproj">
          </BuildableReference>

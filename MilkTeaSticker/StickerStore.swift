@@ -8,6 +8,9 @@ final class StickerStore {
 
     private let fileManager = FileManager.default
     private let imageCache = NSCache<NSString, UIImage>()
+    private let stickerEntriesKey = "stickerEntries"
+    private let stickerOrderKey = "stickerDateOrders"
+    private let calendar = Calendar.current
 
     private var containerURL: URL? {
         fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
@@ -59,7 +62,7 @@ final class StickerStore {
     // MARK: - Load
 
     func loadEntries() -> [StickerEntry] {
-        guard let data = UserDefaults.standard.data(forKey: "stickerEntries"),
+        guard let data = UserDefaults.standard.data(forKey: stickerEntriesKey),
               let entries = try? JSONDecoder().decode([StickerEntry].self, from: data) else {
             return []
         }
@@ -88,12 +91,31 @@ final class StickerStore {
 
     /// Load stickers for a specific date
     func loadStickersForDate(_ date: Date) -> [(entry: StickerEntry, image: UIImage)] {
-        let calendar = Calendar.current
         let entries = loadEntries().filter { calendar.isDate($0.date, inSameDayAs: date) }
         return entries.compactMap { entry in
             guard let image = loadStickerImage(id: entry.id) else { return nil }
             return (entry, image)
         }
+    }
+
+    /// Load stickers for a specific date using the user-adjusted order.
+    func loadOrderedStickersForDate(_ date: Date) -> [(entry: StickerEntry, image: UIImage)] {
+        let stickers = loadStickersForDate(date)
+        return applySavedOrder(to: stickers, for: date)
+    }
+
+    /// Persist the visual order for one date. Unknown/deleted IDs are ignored on read.
+    func saveStickerOrder(ids: [String], for date: Date) {
+        let validIDs = Set(loadStickersForDate(date).map(\.entry.id))
+        let orderedIDs = ids.filter { validIDs.contains($0) }
+        var orders = loadStickerOrders()
+        let key = orderKey(for: date)
+        if orderedIDs.isEmpty {
+            orders.removeValue(forKey: key)
+        } else {
+            orders[key] = orderedIDs
+        }
+        saveStickerOrders(orders)
     }
 
     /// Warm the image cache for a date's stickers on a background thread.
@@ -111,13 +133,84 @@ final class StickerStore {
         var entries = loadEntries()
         entries.removeAll { $0.id == id }
         saveEntries(entries)
+        removeStickerIDFromSavedOrders(id)
     }
 
     // MARK: - Private
 
     private func saveEntries(_ entries: [StickerEntry]) {
         guard let data = try? JSONEncoder().encode(entries) else { return }
-        UserDefaults.standard.set(data, forKey: "stickerEntries")
+        UserDefaults.standard.set(data, forKey: stickerEntriesKey)
+    }
+
+    private func applySavedOrder(
+        to stickers: [(entry: StickerEntry, image: UIImage)],
+        for date: Date
+    ) -> [(entry: StickerEntry, image: UIImage)] {
+        let fallback = chronologicalStickers(stickers)
+        guard let savedIDs = loadStickerOrders()[orderKey(for: date)], !savedIDs.isEmpty else {
+            return fallback
+        }
+
+        let byID = Dictionary(uniqueKeysWithValues: fallback.map { ($0.entry.id, $0) })
+        var ordered: [(entry: StickerEntry, image: UIImage)] = []
+        var usedIDs = Set<String>()
+
+        for id in savedIDs {
+            guard let item = byID[id], !usedIDs.contains(id) else { continue }
+            ordered.append(item)
+            usedIDs.insert(id)
+        }
+
+        ordered.append(contentsOf: fallback.filter { !usedIDs.contains($0.entry.id) })
+        return ordered
+    }
+
+    private func chronologicalStickers(
+        _ stickers: [(entry: StickerEntry, image: UIImage)]
+    ) -> [(entry: StickerEntry, image: UIImage)] {
+        stickers
+            .enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.entry.timestamp == rhs.element.entry.timestamp {
+                    return lhs.offset > rhs.offset
+                }
+                return lhs.element.entry.timestamp < rhs.element.entry.timestamp
+            }
+            .map(\.element)
+    }
+
+    private func loadStickerOrders() -> [String: [String]] {
+        guard let data = UserDefaults.standard.data(forKey: stickerOrderKey),
+              let orders = try? JSONDecoder().decode([String: [String]].self, from: data) else {
+            return [:]
+        }
+        return orders
+    }
+
+    private func saveStickerOrders(_ orders: [String: [String]]) {
+        guard let data = try? JSONEncoder().encode(orders) else { return }
+        UserDefaults.standard.set(data, forKey: stickerOrderKey)
+    }
+
+    private func orderKey(for date: Date) -> String {
+        let startOfDay = calendar.startOfDay(for: date)
+        return String(Int(startOfDay.timeIntervalSince1970))
+    }
+
+    private func removeStickerIDFromSavedOrders(_ id: String) {
+        var orders = loadStickerOrders()
+        var changed = false
+        for key in orders.keys {
+            let filtered = orders[key]?.filter { $0 != id } ?? []
+            if filtered != orders[key] {
+                orders[key] = filtered
+                changed = true
+            }
+        }
+        if changed {
+            saveStickerOrders(orders.filter { !$0.value.isEmpty })
+        }
     }
 
     private func deleteStickerImage(id: String) {
