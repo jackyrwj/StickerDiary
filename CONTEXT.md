@@ -8,6 +8,18 @@ This product helps people turn their own photos into reusable stickers for every
 A reusable visual expression made from a photo supplied by the user, primarily intended for conversations and social sharing.
 _Avoid_: Diary sticker, diary material
 
+**Sticker Character**:
+A recognizable person, pet, or other subject whose defining appearance is kept consistent across a set of generated stickers.
+_Avoid_: Source photo, cutout
+
+**Reaction Sticker**:
+A personal sticker whose expression and pose communicate a specific conversational intent.
+_Avoid_: Decorated cutout, captioned photo
+
+**Sticker Pack**:
+A coherent collection of reaction stickers built around one sticker character for repeated use in conversations.
+_Avoid_: Photo batch, diary collection
+
 **Personal Sticker Library**:
 The user's lasting collection of personal stickers, organized so that a sticker can be found and reused quickly.
 _Avoid_: Diary archive, photo album
