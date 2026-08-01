@@ -6,11 +6,11 @@ Deliver a new native iOS app that turns reference photos into a reusable, high-l
 
 ## Next Step
 
-Validate `docs/product/personal-sticker-v1-plan.md` against the glossary and ADRs, then review it with the product owner for explicit scope confirmation.
+Boot an iPhone simulator, run the offline vertical slice end to end, inspect the UI, and verify persistence plus the system sticker extension at runtime.
 
 ## Current Phase
 
-Phase 0 — Product and implementation planning
+Phase 2 — Local sticker domain and library
 
 ## Phases
 
@@ -21,25 +21,25 @@ Phase 0 — Product and implementation planning
 - [x] Record the domain language and hard-to-reverse decisions.
 - [x] Complete the detailed V1 plan.
 - [x] Validate the detailed V1 plan against the glossary and ADRs.
-- [ ] Review the detailed V1 plan with the product owner.
-- [ ] Resolve blocking open decisions and confirm shared understanding.
-- **Status:** in_progress
+- [x] Review the detailed V1 plan with the product owner.
+- [x] Resolve blocking open decisions and confirm shared understanding.
+- **Status:** complete
 
 ### Phase 1: Safe project scaffolding
 
-- [ ] Create a dedicated implementation branch and isolated worktree.
-- [ ] Establish a new modular SwiftUI app shell and sticker extension target.
-- [ ] Add mock services, previews, routing, dependency injection, and build verification.
-- [ ] Remove all client-side API credentials from the new product.
-- **Status:** pending
+- [x] Create a dedicated implementation branch and isolated worktree.
+- [x] Establish a new modular SwiftUI app shell and sticker extension target.
+- [x] Add mock services, previews, routing, dependency injection, and build verification.
+- [x] Remove all client-side API credentials from the new product.
+- **Status:** complete
 
 ### Phase 2: Local sticker domain and library
 
 - [ ] Implement sticker characters, reference photos, packs, reaction stickers, and generation jobs.
-- [ ] Store metadata locally and image assets as files.
+- [x] Store metadata locally and image assets as files.
 - [ ] Build character creation, pack library, favorites, recent items, and deletion.
 - [ ] Verify persistence, relaunch behavior, empty states, and storage cleanup.
-- **Status:** pending
+- **Status:** in_progress
 
 ### Phase 3: AI generation pipeline
 
@@ -51,16 +51,16 @@ Phase 0 — Product and implementation planning
 
 ### Phase 4: Core reaction-pack workflow
 
-- [ ] Generate the twelve accepted conversational intents.
-- [ ] Render exact editable Chinese captions locally.
+- [x] Generate the twelve accepted conversational intents in the mock flow.
+- [x] Render exact editable Chinese captions locally.
 - [ ] Build review, delete, caption edit, and single-sticker regeneration flows.
 - [ ] Validate transparency, visual consistency, file size, and accessibility descriptions.
 - **Status:** pending
 
 ### Phase 5: iOS system Stickers integration
 
-- [ ] Share approved sticker assets through an App Group.
-- [ ] Present dynamic user-created stickers in the system Stickers experience.
+- [x] Share approved sticker assets through an App Group.
+- [x] Implement dynamic presentation of user-created stickers with a Messages extension.
 - [ ] Verify install, refresh, deletion, upgrade, and no-network reuse behavior.
 - [ ] Keep all advertising, purchasing, and marketing out of the extension.
 - **Status:** pending
@@ -99,7 +99,8 @@ Phase 0 — Product and implementation planning
 
 | Error | Attempt | Resolution |
 |---|---:|---|
-| No implementation errors yet | 1 | Phase 0 remains documentation-only. |
+| `MSStickerSize.medium` does not exist | 1 | Used the SDK-defined `.regular` case, which Apple describes as the medium display size. |
+| iOS 17 compile rejected iOS 18 `breathe` symbol effect and shorthand Section header/footer syntax | 1 | Switched to the iOS 17 `pulse` effect and the explicit Section content/header/footer initializer. |
 
 ## Notes
 

@@ -3,288 +3,568 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA000001 /* MilkTeaStickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* MilkTeaStickerApp.swift */; };
-		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* ContentView.swift */; };
-		AA000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100003 /* Assets.xcassets */; };
-		BB000001 /* StickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001 /* StickerStore.swift */; };
-		CC000001 /* MilkTeaStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100034 /* MilkTeaStickerView.swift */; };
+		06EDF1E346DE4E94447A0465 /* MockStickerGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */; };
+		0C17978B518BA903BDF83C81 /* PersonalStickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BEDDE8CCF225D4F073FA997 /* PersonalStickerApp.swift */; };
+		354D74C1C042F05505CF0800 /* StickerPackDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F431E530FB698C893A0B1655 /* StickerPackDetailView.swift */; };
+		3C7FDBFEFAE45B19282EF6A5 /* StickerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709D804B71C2B366138A4767 /* StickerModels.swift */; };
+		3D7AEDED4BD2B0CD38441791 /* StickerArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDAC303685803DD6F67159F /* StickerArtworkView.swift */; };
+		55BC37C922A3856FBC74E772 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8854ECDC80053EC80B78C7D1 /* Assets.xcassets */; };
+		5D24D61BE807CDD083D29445 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1575F3B511A67E56353112A7 /* AppShellView.swift */; };
+		616726FBB90A1E0C1CA7535F /* GenerationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE8D376731B3F29A0D46796 /* GenerationViewModel.swift */; };
+		73B6BF23DBBF082D0720B142 /* StickerLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F16D68C665A966B426ABF2B /* StickerLibraryView.swift */; };
+		86393D07227E97420C7ED738 /* CreateFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 208B66EDD6F1A0DB82010858 /* CreateFlowView.swift */; };
+		8A7E87B51D01A5AC3B34AF06 /* MessagesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2762D09921B6A343C1F56D05 /* MessagesViewController.swift */; };
+		A8AD5C4C54B11C6FE62FA46E /* StickerLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8B862090D443CEFB4B623E /* StickerLibrary.swift */; };
+		AA1A30359234A17D5F5BDDEC /* PersonalStickerMessages.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		ADFF5ABEDCCD824D90BED21F /* SharedStickerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */; };
+		ED0714EF189D36A7172C3AD9 /* CreateStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BCCB49E444F3A367DE6C47 /* CreateStickerView.swift */; };
+		FECA0CEC94DF84BA5922D2AC /* GenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF7CE3D496594A0B84C5763 /* GenerationView.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		AA100001 /* MilkTeaStickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerApp.swift; sourceTree = "<group>"; };
-		AA100002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AA100003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA100034 /* MilkTeaStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerView.swift; sourceTree = "<group>"; };
-		AA200001 /* MilkTeaSticker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MilkTeaSticker.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BB100001 /* StickerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerStore.swift; sourceTree = "<group>"; };
-/* End PBXFileReference section */
+/* Begin PBXContainerItemProxy section */
+		B67C7DDF36804CA5ED6C2CEE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0EBD96FF672CEE6A1C2A2458 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1F4BBC6584DD8D9905AB3917;
+			remoteInfo = PersonalStickerMessages;
+		};
+/* End PBXContainerItemProxy section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		AA300001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
+/* Begin PBXCopyFilesBuildPhase section */
+		A09175FEC54E6C267DBB9F92 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
 			files = (
+				AA1A30359234A17D5F5BDDEC /* PersonalStickerMessages.appex in Embed Foundation Extensions */,
 			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXFrameworksBuildPhase section */
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		1575F3B511A67E56353112A7 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
+		1F16D68C665A966B426ABF2B /* StickerLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerLibraryView.swift; sourceTree = "<group>"; };
+		208B66EDD6F1A0DB82010858 /* CreateFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateFlowView.swift; sourceTree = "<group>"; };
+		22C360CA72C8777D09FAD50F /* PersonalStickerMessages.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PersonalStickerMessages.entitlements; sourceTree = "<group>"; };
+		22DC134A327B7D54241C5B1A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2762D09921B6A343C1F56D05 /* MessagesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesViewController.swift; sourceTree = "<group>"; };
+		3DDAC303685803DD6F67159F /* StickerArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerArtworkView.swift; sourceTree = "<group>"; };
+		4BEDDE8CCF225D4F073FA997 /* PersonalStickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalStickerApp.swift; sourceTree = "<group>"; };
+		5CF7CE3D496594A0B84C5763 /* GenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationView.swift; sourceTree = "<group>"; };
+		6CE8D376731B3F29A0D46796 /* GenerationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationViewModel.swift; sourceTree = "<group>"; };
+		6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStickerRepository.swift; sourceTree = "<group>"; };
+		709D804B71C2B366138A4767 /* StickerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerModels.swift; sourceTree = "<group>"; };
+		71BCCB49E444F3A367DE6C47 /* CreateStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateStickerView.swift; sourceTree = "<group>"; };
+		806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PersonalStickerMessages.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8854ECDC80053EC80B78C7D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8F8B862090D443CEFB4B623E /* StickerLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerLibrary.swift; sourceTree = "<group>"; };
+		AEF9A429845C767A30EE5CB6 /* PersonalSticker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PersonalSticker.entitlements; sourceTree = "<group>"; };
+		DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockStickerGenerationService.swift; sourceTree = "<group>"; };
+		EE2A7C1B7E9BD61A2BF491CC /* PersonalSticker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PersonalSticker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F431E530FB698C893A0B1655 /* StickerPackDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerPackDetailView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		AA400001 = {
+		2AEDE6688D0473C3E01ACCAF /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				AA400002 /* MilkTeaSticker */,
-				AA400003 /* Products */,
+				DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */,
+				6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */,
+				8F8B862090D443CEFB4B623E /* StickerLibrary.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		3D94E2A16354C007CDB6CB96 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EE2A7C1B7E9BD61A2BF491CC /* PersonalSticker.app */,
+				806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		63E73631FAA3639D2119BA84 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1575F3B511A67E56353112A7 /* AppShellView.swift */,
+				4BEDDE8CCF225D4F073FA997 /* PersonalStickerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		679063D6BAEA053E94342127 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				1F16D68C665A966B426ABF2B /* StickerLibraryView.swift */,
+				F431E530FB698C893A0B1655 /* StickerPackDetailView.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		76416F55101F13B65F041608 /* Create */ = {
+			isa = PBXGroup;
+			children = (
+				208B66EDD6F1A0DB82010858 /* CreateFlowView.swift */,
+				71BCCB49E444F3A367DE6C47 /* CreateStickerView.swift */,
+			);
+			path = Create;
+			sourceTree = "<group>";
+		};
+		7FE6961A6B46FE25FD76CD2B /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				76416F55101F13B65F041608 /* Create */,
+				DFBC09FF3B0D76B318833BD6 /* Generation */,
+				679063D6BAEA053E94342127 /* Library */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		93DAB01FE0F59DFEFFC43A24 /* PersonalStickerMessages */ = {
+			isa = PBXGroup;
+			children = (
+				22DC134A327B7D54241C5B1A /* Info.plist */,
+				2762D09921B6A343C1F56D05 /* MessagesViewController.swift */,
+				22C360CA72C8777D09FAD50F /* PersonalStickerMessages.entitlements */,
+			);
+			path = PersonalStickerMessages;
+			sourceTree = "<group>";
+		};
+		A15CEA4C9C65AAC0A195D997 = {
+			isa = PBXGroup;
+			children = (
+				A7B4A2FF5BDB24942C7E20F9 /* MilkTeaSticker */,
+				93DAB01FE0F59DFEFFC43A24 /* PersonalStickerMessages */,
+				3D94E2A16354C007CDB6CB96 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		AA400002 /* MilkTeaSticker */ = {
+		A7B4A2FF5BDB24942C7E20F9 /* MilkTeaSticker */ = {
 			isa = PBXGroup;
 			children = (
-				AA100001 /* MilkTeaStickerApp.swift */,
-				AA100002 /* ContentView.swift */,
-				AA100034 /* MilkTeaStickerView.swift */,
-				BB100001 /* StickerStore.swift */,
-				AA100003 /* Assets.xcassets */,
+				8854ECDC80053EC80B78C7D1 /* Assets.xcassets */,
+				AEF9A429845C767A30EE5CB6 /* PersonalSticker.entitlements */,
+				63E73631FAA3639D2119BA84 /* App */,
+				D9564BA2118E1CF6974851E4 /* Components */,
+				C61AA85BC0C815771D224B56 /* Domain */,
+				7FE6961A6B46FE25FD76CD2B /* Features */,
+				2AEDE6688D0473C3E01ACCAF /* Services */,
 			);
 			path = MilkTeaSticker;
 			sourceTree = "<group>";
 		};
-		AA400003 /* Products */ = {
+		C61AA85BC0C815771D224B56 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				AA200001 /* MilkTeaSticker.app */,
+				709D804B71C2B366138A4767 /* StickerModels.swift */,
 			);
-			name = Products;
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		D9564BA2118E1CF6974851E4 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				3DDAC303685803DD6F67159F /* StickerArtworkView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		DFBC09FF3B0D76B318833BD6 /* Generation */ = {
+			isa = PBXGroup;
+			children = (
+				5CF7CE3D496594A0B84C5763 /* GenerationView.swift */,
+				6CE8D376731B3F29A0D46796 /* GenerationViewModel.swift */,
+			);
+			path = Generation;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AA500001 /* MilkTeaSticker */ = {
+		1F4BBC6584DD8D9905AB3917 /* PersonalStickerMessages */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA700001 /* Build configuration list for PBXNativeTarget "MilkTeaSticker" */;
+			buildConfigurationList = 5AA214F76130FA880320D03E /* Build configuration list for PBXNativeTarget "PersonalStickerMessages" */;
 			buildPhases = (
-				AA600001 /* Sources */,
-				AA300001 /* Frameworks */,
-				AA600002 /* Resources */,
+				2BB31C383F4AE02B8F3EE31E /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = MilkTeaSticker;
+			name = PersonalStickerMessages;
 			packageProductDependencies = (
 			);
-			productName = MilkTeaSticker;
-			productReference = AA200001 /* MilkTeaSticker.app */;
+			productName = PersonalStickerMessages;
+			productReference = 806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		3DB3C38BB90835DAF9475C10 /* PersonalSticker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DD90ECD220414877BE2DBE93 /* Build configuration list for PBXNativeTarget "PersonalSticker" */;
+			buildPhases = (
+				8D1012AE28219AA95E73D42F /* Sources */,
+				206D0639D762035B1B4FEDBC /* Resources */,
+				A09175FEC54E6C267DBB9F92 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				402CDDD83AB3668E6A1D8BB3 /* PBXTargetDependency */,
+			);
+			name = PersonalSticker;
+			packageProductDependencies = (
+			);
+			productName = PersonalSticker;
+			productReference = EE2A7C1B7E9BD61A2BF491CC /* PersonalSticker.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA900001 /* Project object */ = {
+		0EBD96FF672CEE6A1C2A2458 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 1600;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					AA500001 = {
-						CreatedOnToolsVersion = 16.0;
+					1F4BBC6584DD8D9905AB3917 = {
+						DevelopmentTeam = 9G5964XAXT;
+						ProvisioningStyle = Automatic;
+					};
+					3DB3C38BB90835DAF9475C10 = {
+						DevelopmentTeam = 9G5964XAXT;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = AA700002 /* Build configuration list for PBXProject "MilkTeaSticker" */;
+			buildConfigurationList = 3795E84D15124EEA700B40EF /* Build configuration list for PBXProject "MilkTeaSticker" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 			);
-			mainGroup = AA400001;
-			packageReferences = (
-			);
-			productRefGroup = AA400003 /* Products */;
+			mainGroup = A15CEA4C9C65AAC0A195D997;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AA500001 /* MilkTeaSticker */,
+				3DB3C38BB90835DAF9475C10 /* PersonalSticker */,
+				1F4BBC6584DD8D9905AB3917 /* PersonalStickerMessages */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA600002 /* Resources */ = {
+		206D0639D762035B1B4FEDBC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000003 /* Assets.xcassets in Resources */,
+				55BC37C922A3856FBC74E772 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA600001 /* Sources */ = {
+		2BB31C383F4AE02B8F3EE31E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000001 /* MilkTeaStickerApp.swift in Sources */,
-				AA000002 /* ContentView.swift in Sources */,
-				BB000001 /* StickerStore.swift in Sources */,
-				CC000001 /* MilkTeaStickerView.swift in Sources */,
+				8A7E87B51D01A5AC3B34AF06 /* MessagesViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D1012AE28219AA95E73D42F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D24D61BE807CDD083D29445 /* AppShellView.swift in Sources */,
+				86393D07227E97420C7ED738 /* CreateFlowView.swift in Sources */,
+				ED0714EF189D36A7172C3AD9 /* CreateStickerView.swift in Sources */,
+				FECA0CEC94DF84BA5922D2AC /* GenerationView.swift in Sources */,
+				616726FBB90A1E0C1CA7535F /* GenerationViewModel.swift in Sources */,
+				06EDF1E346DE4E94447A0465 /* MockStickerGenerationService.swift in Sources */,
+				0C17978B518BA903BDF83C81 /* PersonalStickerApp.swift in Sources */,
+				ADFF5ABEDCCD824D90BED21F /* SharedStickerRepository.swift in Sources */,
+				3D7AEDED4BD2B0CD38441791 /* StickerArtworkView.swift in Sources */,
+				A8AD5C4C54B11C6FE62FA46E /* StickerLibrary.swift in Sources */,
+				73B6BF23DBBF082D0720B142 /* StickerLibraryView.swift in Sources */,
+				3C7FDBFEFAE45B19282EF6A5 /* StickerModels.swift in Sources */,
+				354D74C1C042F05505CF0800 /* StickerPackDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin XCBuildConfiguration section */
-		AA800001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
+/* Begin PBXTargetDependency section */
+		402CDDD83AB3668E6A1D8BB3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1F4BBC6584DD8D9905AB3917 /* PersonalStickerMessages */;
+			targetProxy = B67C7DDF36804CA5ED6C2CEE /* PBXContainerItemProxy */;
 		};
-		AA800002 /* Release */ = {
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1F969F473C54D041B81883AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 9G5964XAXT;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		AA800003 /* Debug */ = {
+		2635D09E8DF20B80FA8C7ABD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 9G5964XAXT;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "奶茶贴纸";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄奶茶照片并制作白边贴纸。";
-				INFOPLIST_KEY_NSMotionUsageDescription = "用于让纸袋里的贴纸根据手机倾斜自然滑动。";
+				CODE_SIGN_ENTITLEMENTS = MilkTeaSticker/PersonalSticker.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "贴贴";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "选择你授权的照片，用来制作只属于你的表情贴纸。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
-				PRODUCT_NAME = MilkTeaSticker;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jackyrwj.PersonalSticker;
+				PRODUCT_NAME = PersonalSticker;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		373B14BCF656A3BCA08D1351 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PersonalStickerMessages/PersonalStickerMessages.entitlements;
+				INFOPLIST_FILE = PersonalStickerMessages/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jackyrwj.PersonalSticker.MessagesExtension;
+				PRODUCT_NAME = PersonalStickerMessages;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3CBD97685C7639454FEF1BFB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MilkTeaSticker/PersonalSticker.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CFBundleDisplayName = "贴贴";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "选择你授权的照片，用来制作只属于你的表情贴纸。";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jackyrwj.PersonalSticker;
+				PRODUCT_NAME = PersonalSticker;
+				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		AA800004 /* Release */ = {
+		B62C1D2D38A9592AE686181C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 9G5964XAXT;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "奶茶贴纸";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄奶茶照片并制作白边贴纸。";
-				INFOPLIST_KEY_NSMotionUsageDescription = "用于让纸袋里的贴纸根据手机倾斜自然滑动。";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PersonalStickerMessages/PersonalStickerMessages.entitlements;
+				INFOPLIST_FILE = PersonalStickerMessages/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
-				PRODUCT_NAME = MilkTeaSticker;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jackyrwj.PersonalSticker.MessagesExtension;
+				PRODUCT_NAME = PersonalStickerMessages;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = Release;
+			name = Debug;
+		};
+		EB1FF946038C621304EB911E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA700001 /* Build configuration list for PBXNativeTarget "MilkTeaSticker" */ = {
+		3795E84D15124EEA700B40EF /* Build configuration list for PBXProject "MilkTeaSticker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA800003 /* Debug */,
-				AA800004 /* Release */,
+				EB1FF946038C621304EB911E /* Debug */,
+				1F969F473C54D041B81883AD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		AA700002 /* Build configuration list for PBXProject "MilkTeaSticker" */ = {
+		5AA214F76130FA880320D03E /* Build configuration list for PBXNativeTarget "PersonalStickerMessages" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AA800001 /* Debug */,
-				AA800002 /* Release */,
+				B62C1D2D38A9592AE686181C /* Debug */,
+				373B14BCF656A3BCA08D1351 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
+		};
+		DD90ECD220414877BE2DBE93 /* Build configuration list for PBXNativeTarget "PersonalSticker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3CBD97685C7639454FEF1BFB /* Debug */,
+				2635D09E8DF20B80FA8C7ABD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = AA900001 /* Project object */;
+	rootObject = 0EBD96FF672CEE6A1C2A2458 /* Project object */;
 }

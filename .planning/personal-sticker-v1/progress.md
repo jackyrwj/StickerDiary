@@ -2,6 +2,22 @@
 
 ## Session: 2026-08-02
 
+### Phase 1: Safe project scaffolding
+
+- **Status:** complete
+- The product owner explicitly approved starting implementation.
+- Created isolated implementation worktree `/tmp/personal-sticker-v1.vzB7Ua` on branch `codex/personal-sticker-v1`, based on the approved planning branch.
+- Confirmed the original `main` worktree remains untouched.
+- Verified against current Apple documentation that user-generated stickers require a coded iMessage extension using `MSStickerBrowserViewController`; enabling the media presentation context exposes it in the system Stickers surface rather than only inside Messages.
+- Replaced the legacy diary source target with a modular SwiftUI shell for the temporary product name “贴贴”.
+- Added photo selection, the fixed twelve-reaction flow, deterministic offline generation, local caption editing, pack review, persistence, favorites, deletion, sharing, and empty/error/loading states.
+- Added a coded Messages extension that reads approved local PNG files through an App Group and presents them with `MSStickerBrowserViewController`.
+- Regenerated the Xcode project from `project.yml` with distinct new-product bundle identifiers for the containing app and extension.
+- No simulator was booted, so runtime UI inspection remains pending; proceeding with non-launch build validation first.
+- Fixed caption editing so the output PNG is re-rendered locally from caption-free base artwork; the image model never needs to draw Chinese text.
+- Reduced mock sticker output to the standard 408 × 408 medium sticker size.
+- Completed a clean generic iOS Simulator build of both the app and embedded Messages extension.
+
 ### Phase 0: Product and implementation planning
 
 - **Status:** in_progress
@@ -41,6 +57,10 @@
 | Markdown fence balance | Detailed plan | Even number of fences | 8 fences | Pass |
 | Documentation secret scan | Planning and product docs | No API-like credentials | No matches | Pass |
 | Decision consistency review | Context, ADRs, and detailed plan | No contradictory scope | One wording conflict found and corrected | Pass |
+| iOS Simulator build | `PersonalSticker` Debug scheme, iOS 17 minimum | App and Messages extension compile and embed | Build succeeded | Pass |
+| Extension metadata | Built Messages extension `Info.plist` | Dynamic Messages extension and system media context declared | Required keys and both presentation contexts present | Pass |
+| Source secret scan | New app and extension Swift sources | No client API credentials | No matches | Pass |
+| Runtime UI and persistence | Booted iPhone simulator | Complete create/edit/save/relaunch flow | No simulator was booted | Pending |
 
 ## Error Log
 
@@ -48,13 +68,15 @@
 |---|---|---:|---|
 | 2026-08-02 | None during planning-file initialization | 1 | No action required. |
 | 2026-08-02 | ADR 0004 wording conflicted with the later decision to defer V1 monetization | 1 | Changed the ADR to refer only to any future in-app purchases. |
+| 2026-08-02 | First extension compile used nonexistent `MSStickerSize.medium` | 1 | Replaced it with the SDK-defined `.regular` case. |
+| 2026-08-02 | Second compile found an iOS 18-only symbol animation and an invalid Section initializer | 1 | Replaced them with iOS 17-compatible forms; also removed an unnecessary sendable closure annotation that produced a future Swift 6 warning. |
 
 ## 5-Question Reboot Check
 
 | Question | Answer |
 |---|---|
-| Where am I? | Phase 0, writing and validating the detailed V1 plan. |
-| Where am I going? | Scope confirmation, modular iOS scaffolding, local domain, AI generation, system Stickers integration, and release hardening. |
+| Where am I? | Phase 2, with the modular app shell and offline mock vertical slice compiling successfully. |
+| Where am I going? | Runtime vertical-slice verification, complete local domain behavior, real AI generation, system Stickers verification, and release hardening. |
 | What's the goal? | Ship an iOS app that creates reusable personal reaction-sticker packs from reference photos. |
 | What have I learned? | See `findings.md`. |
-| What have I done? | Recorded the product decisions and initialized persistent planning memory. |
+| What have I done? | Replaced the legacy diary target with the new modular personal-sticker app, local library, mock generator, and dynamic Messages extension. |

@@ -22,6 +22,7 @@
 ## Research Findings
 
 - Apple supports dynamic sticker experiences through Messages and the system Stickers surface.
+- Apple documents that a coded iMessage extension can provide a runtime-changing collection through `MSStickerBrowserViewController`. By declaring the media presentation context, the extension can appear in the system Stickers app accessible from the emoji keyboard; this is the appropriate path for user-generated packs. A no-code Sticker Pack target is static and is not sufficient for this product.
 - Apple requires advertising to stay in the main app binary and outside extensions; monetization is deferred for V1 regardless.
 - Reference-image models from Alibaba, Google, and OpenAI support image editing and varying degrees of character consistency; provider selection requires a controlled benchmark.
 - Apple permits renaming an app, but the accepted plan is to use a new App Store record and bundle identifier because the product is fundamentally different.
@@ -58,6 +59,8 @@
 - `docs/adr/0003-relaunch-without-legacy-data-migration.md`
 - `docs/adr/0004-launch-as-a-new-app-store-product.md`
 - Apple Messages documentation: https://developer.apple.com/documentation/messages
+- Apple dynamic sticker browser: https://developer.apple.com/documentation/messages/msstickerbrowserviewcontroller
+- Apple system Stickers presentation contexts: https://developer.apple.com/documentation/messages/adding-sticker-packs-and-imessage-apps-to-the-system-stickers-app-messages-camera-and-facetime
 - App Store Review Guidelines: https://developer.apple.com/app-store/review/guidelines/
 - Alibaba image models: https://help.aliyun.com/zh/model-studio/image-model/
 - Gemini image generation: https://ai.google.dev/gemini-api/docs/image-generation
