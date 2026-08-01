@@ -12,6 +12,10 @@ _Avoid_: Diary sticker, diary material
 The user's lasting collection of personal stickers, organized so that a sticker can be found and reused quickly.
 _Avoid_: Diary archive, photo album
 
+**Sticker Reuse**:
+Selecting an existing personal sticker to express something in a new conversation or social post. This is the product's primary recurring behavior.
+_Avoid_: Recreating a sticker, sharing a diary
+
 **Life Recap**:
 A secondary retrospective assembled from the personal stickers a user created or used over time; it does not require the user to write a diary.
 _Avoid_: Daily diary, mandatory journal
