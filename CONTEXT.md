@@ -20,6 +20,14 @@ _Avoid_: Decorated cutout, captioned photo
 A coherent collection of reaction stickers built around one sticker character for repeated use in conversations.
 _Avoid_: Photo batch, diary collection
 
+**Core Reaction Pack**:
+The first sticker pack generated for a sticker character, covering a curated set of common conversational intents without requiring the user to write prompts.
+_Avoid_: Starter template, AI prompt collection
+
+**Theme Pack**:
+An additional curated sticker pack whose conversational intents fit a specific social context, such as work, close friends, couples, or pets.
+_Avoid_: Visual theme, decoration pack
+
 **Personal Sticker Library**:
 The user's lasting collection of personal stickers, organized so that a sticker can be found and reused quickly.
 _Avoid_: Diary archive, photo album
