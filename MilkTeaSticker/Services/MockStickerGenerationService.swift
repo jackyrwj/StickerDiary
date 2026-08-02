@@ -89,19 +89,23 @@ enum StickerRenderer {
 
     static func normalizedArtwork(_ image: UIImage) -> UIImage {
         let size = CGSize(width: 408, height: 408)
+        let contentBounds = CGRect(x: 28, y: 18, width: 352, height: 312)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = false
         return UIGraphicsImageRenderer(size: size, format: format).image { context in
             context.cgContext.clear(CGRect(origin: .zero, size: size))
-            let scale = min(size.width / image.size.width, size.height / image.size.height)
+            let scale = min(
+                contentBounds.width / image.size.width,
+                contentBounds.height / image.size.height
+            )
             let targetSize = CGSize(
                 width: image.size.width * scale,
                 height: image.size.height * scale
             )
             image.draw(in: CGRect(
-                x: (size.width - targetSize.width) / 2,
-                y: (size.height - targetSize.height) / 2,
+                x: contentBounds.midX - targetSize.width / 2,
+                y: contentBounds.midY - targetSize.height / 2,
                 width: targetSize.width,
                 height: targetSize.height
             ))

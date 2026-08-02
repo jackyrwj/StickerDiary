@@ -22,6 +22,7 @@
 		A8AD5C4C54B11C6FE62FA46E /* StickerLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8B862090D443CEFB4B623E /* StickerLibrary.swift */; };
 		AA1A30359234A17D5F5BDDEC /* PersonalStickerMessages.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ADFF5ABEDCCD824D90BED21F /* SharedStickerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */; };
+		E5446B2560153E0B25015781 /* StickerForegroundExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C951205944FF98CCC6FD8CBF /* StickerForegroundExtractor.swift */; };
 		ED0714EF189D36A7172C3AD9 /* CreateStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BCCB49E444F3A367DE6C47 /* CreateStickerView.swift */; };
 		FECA0CEC94DF84BA5922D2AC /* GenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF7CE3D496594A0B84C5763 /* GenerationView.swift */; };
 /* End PBXBuildFile section */
@@ -69,6 +70,7 @@
 		8854ECDC80053EC80B78C7D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8F8B862090D443CEFB4B623E /* StickerLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerLibrary.swift; sourceTree = "<group>"; };
 		AEF9A429845C767A30EE5CB6 /* PersonalSticker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PersonalSticker.entitlements; sourceTree = "<group>"; };
+		C951205944FF98CCC6FD8CBF /* StickerForegroundExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerForegroundExtractor.swift; sourceTree = "<group>"; };
 		DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockStickerGenerationService.swift; sourceTree = "<group>"; };
 		EE2A7C1B7E9BD61A2BF491CC /* PersonalSticker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PersonalSticker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F431E530FB698C893A0B1655 /* StickerPackDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerPackDetailView.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 				804872C99F74F5E1A4B6DFB6 /* BackendStickerGenerationService.swift */,
 				DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */,
 				6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */,
+				C951205944FF98CCC6FD8CBF /* StickerForegroundExtractor.swift */,
 				8F8B862090D443CEFB4B623E /* StickerLibrary.swift */,
 			);
 			path = Services;
@@ -303,6 +306,7 @@
 				0C17978B518BA903BDF83C81 /* PersonalStickerApp.swift in Sources */,
 				ADFF5ABEDCCD824D90BED21F /* SharedStickerRepository.swift in Sources */,
 				3D7AEDED4BD2B0CD38441791 /* StickerArtworkView.swift in Sources */,
+				E5446B2560153E0B25015781 /* StickerForegroundExtractor.swift in Sources */,
 				A8AD5C4C54B11C6FE62FA46E /* StickerLibrary.swift in Sources */,
 				73B6BF23DBBF082D0720B142 /* StickerLibraryView.swift in Sources */,
 				3C7FDBFEFAE45B19282EF6A5 /* StickerModels.swift in Sources */,

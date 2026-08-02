@@ -40,11 +40,14 @@ struct BackendStickerGenerationService: StickerGenerating {
                 referenceImages: referenceImages,
                 reaction: reaction
             )
+            let foreground = await StickerForegroundExtractor.extract(from: imageData)
             let rendered = try await MainActor.run {
                 guard let generatedImage = UIImage(data: imageData) else {
                     throw BackendGenerationError.invalidResponse
                 }
-                let baseArtwork = StickerRenderer.normalizedArtwork(generatedImage)
+                let baseArtwork = StickerRenderer.normalizedArtwork(
+                    foreground ?? generatedImage
+                )
                 let output = StickerRenderer.captionedArtwork(
                     baseArtwork: baseArtwork,
                     caption: reaction.caption

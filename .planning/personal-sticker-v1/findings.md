@@ -44,7 +44,6 @@
 | App Group for approved extension assets | The containing app and sticker extension need a supported shared container. |
 | Provider-neutral server API | Keeps credentials off-device and reduces model lock-in. |
 | Mock generation path from the first build | Enables deterministic previews, tests, simulator work, and UI progress before paid cloud calls. |
-| Likeness gate before pack generation | Generate one character anchor, ask the user whether it is recognizable, and do not spend twelve generations until it passes. |
 | Deterministic local sticker cleanup | Automatically remove nontransparent backgrounds, crop the visible subject with safe padding, and validate edges on light and dark backgrounds instead of trusting model transparency. |
 
 ## Issues and Risks
@@ -52,7 +51,7 @@
 | Issue | Planned response |
 |---|---|
 | One photo may not preserve identity reliably | Accept up to four references and request more when likeness confidence is low. |
-| Stronger identity wording may still produce a generic chibi face | A/B test prompt constraints, but rely on multiple references and user approval of a character anchor rather than repeated prompt-only retries. |
+| Stronger identity wording may still produce a generic chibi face | A/B test prompt constraints, but rely on multiple references plus review and single-sticker regeneration rather than repeated prompt-only retries. |
 | Twelve independent generations may drift in style or identity | Create a reusable character anchor and feed it into every reaction generation. |
 | AI may render broken Chinese text | Generate art without text and render captions locally. |
 | Partial generation failure can waste time and cost | Model each reaction as an independent attempt with resumable job state. |
@@ -60,6 +59,10 @@
 | User photos are sensitive | Require explicit consent, document retention, minimize upload scope, and support deletion. |
 | New app category is crowded | The product must demonstrate personal identity preservation and system reuse, not generic AI art. |
 | ADR 0004 originally implied V1 required in-app purchases | Clarified that only future in-app purchases would belong to the new App Store product; monetization remains deferred. |
+| A separate anchor confirmation would add friction to the main flow | The owner rejected it; generate directly from selected references and handle likeness corrections during review. |
+
+- Apple Vision's iOS 17 foreground-instance mask request returns individual foreground instances. Its observation can create a high-resolution masked image with all unselected pixels transparent and optionally crop to the smallest extent containing the selected instances, which fits the required on-device cleanup pipeline.
+- Vision did not remove the first Wan result's lightly textured off-white background by itself; it effectively preserved the portrait rectangle. A border-connected color cleanup after Vision removed only background regions connected to the image edges and produced a 408 × 408 PNG with all four corners transparent, visible bounds 194 × 312 at +107,+18, and a 105,989-byte base asset.
 
 ## Resources
 

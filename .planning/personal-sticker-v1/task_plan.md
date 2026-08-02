@@ -54,7 +54,7 @@ Phase 3 — AI generation pipeline
 - [x] Generate the twelve accepted conversational intents in the mock flow.
 - [x] Render exact editable Chinese captions locally.
 - [ ] Build review, delete, caption edit, and single-sticker regeneration flows. (Review, delete, and caption editing are implemented and runtime-verified; single-sticker regeneration remains.)
-- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions.
+- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions. (Vision plus connected-border cleanup is implemented and verified on the first real Wan fixture; a broader light/dark and varied-background set remains.)
 - **Status:** pending
 
 ### Phase 5: iOS system Stickers integration
@@ -95,8 +95,9 @@ Phase 3 — AI generation pipeline
 | Use a backend proxy for cloud AI | API secrets must never ship in the iOS binary and the model provider must remain replaceable. |
 | Use Alibaba Cloud Model Studio `wan2.7-image-pro` as the first image provider candidate | The owner already has Model Studio access, and the current model supports multi-image editing and subject-feature preservation. |
 | Defer ads, subscriptions, and in-app purchases | The product owner asked to validate and finish the core app before monetization. |
-| Treat identity-focused prompting as an aid, not a likeness guarantee | The first real Wan result kept clothing and accessories but generalized the face; user-approved character anchors and additional references provide the actual quality gate. |
+| Treat identity-focused prompting as an aid, not a likeness guarantee | The first real Wan result kept clothing and accessories but generalized the face; V1 relies on up to four references plus review and regeneration, without a mandatory character-anchor confirmation step. |
 | Always post-process model output into a transparent, tightly cropped sticker | The first real result had a visually opaque background, and model-produced transparency is not reliable enough for system sticker delivery. |
+| Skip a separate character-anchor confirmation step in V1 | The owner prefers the shorter direct-to-pack flow; likeness problems are handled by adding references or regenerating individual results during review. |
 
 ## Errors Encountered
 
@@ -109,6 +110,12 @@ Phase 3 — AI generation pipeline
 | Regenerating the Xcode project erased the manually populated App Group entitlement files | 1 | Move the App Group values into `project.yml` entitlement properties so every regeneration recreates both files correctly. |
 | Node 26 test discovery executed the manual paid-test script, and the secret scan matched a documentation placeholder | 1 | Restrict unit tests to `test/*.test.js` and remove the key-shaped prefix from documentation examples. |
 | First real Alibaba one-image request returned HTTP 404 before generation | 1 | The configured URL was the OpenAI-compatible `/compatible-mode/v1` route. Changing to the mainland native `/api/v1` route succeeded on the next, non-identical request. |
+| Initial source search assumed a nonexistent `PersonalSticker/` directory | 1 | No files were changed; resolve source paths from `project.yml` and `rg --files` before implementing image cleanup. |
+| Runtime cleanup verification did not reach the expected review text within 60 seconds | 1 | The review screen completed just after the wait and used different visible text; inspected the live UI instead of repeating the selector wait. |
+| Vision alone preserved the Wan image's off-white rectangle as foreground | 1 | Added an on-device connected-border color cleanup fallback, then reran the same no-cost local fixture and verified transparent corners plus tight subject bounds. |
+| Combined regression check referenced app entitlements from the `backend` subdirectory | 1 | Backend tests had already passed; rerun only the remaining checks from the repository root with correct paths. |
+| `plutil -extract` treated the dotted App Group entitlement key as a key path | 1 | Use PlistBuddy's quoted dictionary key lookup for the remaining entitlement verification. |
+| Final secret scan matched the README's Chinese API-key placeholder | 1 | The placeholder is not a credential; narrow the tracked-file scan to actual key-shaped values before completing verification. |
 
 ## Notes
 
