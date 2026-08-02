@@ -63,7 +63,7 @@
 | Runtime UI and persistence | Booted iPhone simulator | Complete create/edit/save/relaunch flow | Creation, edit, save, favorite, relaunch, and deletion passed | Pass |
 | Backend unit tests | Provider request, validation, and error fixtures | Contract is stable without real credentials | 5 of 5 tests passed | Pass |
 | iOS-backend contract | Local fixture backend, twelve fixed reactions | iOS uploads normalized photos and renders returned images | Reached twelve-sticker review through backend mode | Pass |
-| Real Alibaba generation | User API key and workspace URL | Generate one paid test image | Credentials not yet added to ignored `.env` | Pending |
+| Real Alibaba generation | User mainland API key and native API URL | Generate one paid test image | One `received` image generated in 20.42 seconds; 886 × 1182 PNG, 1,487,420 bytes | Pass with quality follow-up |
 
 ## Error Log
 
@@ -77,6 +77,7 @@
 | 2026-08-02 | `simctl get_app_container` rejected the App Group identifier as a direct container argument | 1 | Switched to requesting the installed app's `groups` listing first, then resolving the exact shared-container path from that output. |
 | 2026-08-02 | Final combined verification command had a shell-quoting parse error in its secret pattern | 1 | Split the secret scan into simple fixed expressions and reran the remaining checks without nested quote syntax. |
 | 2026-08-02 | First real Alibaba one-image request returned HTTP 404 in 0.62 seconds, before any image result | 1 | Safely inspected URL structure without exposing credentials: it was the OpenAI-compatible `/compatible-mode/v1` route. Asked the owner to replace it with the region-specific workspace `/api/v1` URL before retrying. |
+| 2026-08-02 | Second real request using the mainland native `/api/v1` route | 2 | Generated exactly one `received` image successfully in 20.42 seconds; no twelve-image batch was started. |
 
 ## 5-Question Reboot Check
 
@@ -119,3 +120,4 @@
 - Added a manual one-image paid test command so the first credential check costs one generation instead of triggering the full twelve-image pack.
 - Verified a launch without `-StickerBackendURL` still selects the local mock and displays the local-only privacy notice; backend and mock development modes remain isolated.
 - Made local scripts ignore inherited DashScope variables before loading `backend/.env`, preventing an old shell credential from silently overriding the newly pasted key. Verified an empty local file produces a safe `503 configuration_required` health response without calling Alibaba.
+- Completed the first paid one-image credential test with `/Users/raowenjie/Pictures/1000687065.JPG`. The image expresses “received” with a salute, but likeness is only moderate-to-low and the off-white output is effectively opaque despite carrying an alpha channel; prompt/background processing needs improvement before batch generation.
