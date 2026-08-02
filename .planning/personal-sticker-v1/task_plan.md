@@ -38,7 +38,7 @@ Phase 2 — Local sticker domain and library
 - [ ] Implement sticker characters, reference photos, packs, reaction stickers, and generation jobs.
 - [x] Store metadata locally and image assets as files.
 - [ ] Build character creation, pack library, favorites, recent items, and deletion.
-- [ ] Verify persistence, relaunch behavior, empty states, and storage cleanup.
+- [x] Verify persistence, relaunch behavior, empty states, and storage cleanup.
 - **Status:** in_progress
 
 ### Phase 3: AI generation pipeline
@@ -53,7 +53,7 @@ Phase 2 — Local sticker domain and library
 
 - [x] Generate the twelve accepted conversational intents in the mock flow.
 - [x] Render exact editable Chinese captions locally.
-- [ ] Build review, delete, caption edit, and single-sticker regeneration flows.
+- [ ] Build review, delete, caption edit, and single-sticker regeneration flows. (Review, delete, and caption editing are implemented and runtime-verified; single-sticker regeneration remains.)
 - [ ] Validate transparency, visual consistency, file size, and accessibility descriptions.
 - **Status:** pending
 
@@ -101,6 +101,7 @@ Phase 2 — Local sticker domain and library
 |---|---:|---|
 | `MSStickerSize.medium` does not exist | 1 | Used the SDK-defined `.regular` case, which Apple describes as the medium display size. |
 | iOS 17 compile rejected iOS 18 `breathe` symbol effect and shorthand Section header/footer syntax | 1 | Switched to the iOS 17 `pulse` effect and the explicit Section content/header/footer initializer. |
+| Runtime install had no App Group entitlements, so the extension could not read app-created stickers | 1 | Added the shared application-group entitlement to both the containing app and Messages extension, then required a second runtime verification pass. |
 
 ## Notes
 

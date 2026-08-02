@@ -33,6 +33,9 @@ struct CreateStickerView: View {
         .task(id: selectedItems) {
             await loadSelectedPhotos()
         }
+        .task {
+            loadDemoPhotoIfRequested()
+        }
         .alert("照片读取失败", isPresented: Binding(
             get: { photoError != nil },
             set: { if !$0 { photoError = nil } }
@@ -158,7 +161,9 @@ struct CreateStickerView: View {
 
     private func loadSelectedPhotos() async {
         guard !selectedItems.isEmpty else {
-            photoData = []
+            if !shouldUseDemoPhoto {
+                photoData = []
+            }
             return
         }
         isLoadingPhotos = true
@@ -178,6 +183,22 @@ struct CreateStickerView: View {
             }
         }
         photoData = loaded
+    }
+
+    private var shouldUseDemoPhoto: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-UITestUseDemoPhoto")
+#else
+        false
+#endif
+    }
+
+    private func loadDemoPhotoIfRequested() {
+        guard shouldUseDemoPhoto,
+              photoData.isEmpty,
+              let image = UIImage(named: "StickerDiary"),
+              let data = image.pngData() else { return }
+        photoData = [data]
     }
 }
 

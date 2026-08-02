@@ -18,6 +18,7 @@
 - The current storage keeps only the newest fifty stickers, which is incompatible with a lasting personal sticker library.
 - The working `main` checkout contains extensive uncommitted user changes and is one commit ahead of `origin/main`; implementation must use an isolated branch/worktree.
 - A live-looking Bailian API credential is embedded in the current client source. It must be revoked and must not be copied into the new product.
+- Runtime code-signature inspection found that merely declaring entitlement-file paths in the generated Xcode project is insufficient when those plist files contain no keys. Both binaries must carry the identical `com.apple.security.application-groups` value or the repository silently falls back to the containing app's Documents directory and the extension sees no stickers.
 
 ## Research Findings
 

@@ -66,75 +66,81 @@ struct GenerationView: View {
     }
 
     private var reviewContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("这一包先这样")
-                            .font(.system(.title, design: .rounded, weight: .bold))
-                        Text("点开任意贴纸可修改文字或删除。真实 AI 接入后还可以单张重做。")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    PrototypeBadge()
-                }
-
-                TextField("贴纸包名称", text: $model.packName)
-                    .font(.headline)
-                    .padding(14)
-                    .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16))
-
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
-                    ],
-                    spacing: 12
-                ) {
-                    ForEach(model.drafts) { draft in
-                        Button {
-                            model.selectedDraft = draft
-                        } label: {
-                            VStack(spacing: 8) {
-                                StickerArtworkView(imageURL: draft.temporaryImageURL)
-                                    .aspectRatio(1, contentMode: .fit)
-                                Text(draft.caption)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                            }
-                            .padding(8)
-                            .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 22))
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("这一包先这样")
+                                .font(.system(.title, design: .rounded, weight: .bold))
+                            Text("点开任意贴纸可修改文字或删除。真实 AI 接入后还可以单张重做。")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(draft.caption)贴纸，点按编辑")
+                        Spacer()
+                        PrototypeBadge()
+                    }
+
+                    TextField("贴纸包名称", text: $model.packName)
+                        .font(.headline)
+                        .padding(14)
+                        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16))
+
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 12),
+                            GridItem(.flexible(), spacing: 12)
+                        ],
+                        spacing: 12
+                    ) {
+                        ForEach(model.drafts) { draft in
+                            Button {
+                                model.selectedDraft = draft
+                            } label: {
+                                VStack(spacing: 8) {
+                                    StickerArtworkView(imageURL: draft.temporaryImageURL)
+                                        .aspectRatio(1, contentMode: .fit)
+                                    Text(draft.caption)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                }
+                                .padding(8)
+                                .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 22))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(draft.caption)贴纸，点按编辑")
+                        }
                     }
                 }
+                .padding(20)
+                .padding(.bottom, 76)
+                .id("review-start")
             }
-            .padding(20)
-            .padding(.bottom, 76)
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                do {
-                    try model.save(to: library)
-                    onSaved()
-                } catch {}
-            } label: {
-                Label(
-                    model.isSaving ? "正在保存" : "保存到我的贴纸库",
-                    systemImage: "square.and.arrow.down.fill"
-                )
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
+            .onAppear {
+                proxy.scrollTo("review-start", anchor: .top)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.drafts.isEmpty || model.isSaving)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial)
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    do {
+                        try model.save(to: library)
+                        onSaved()
+                    } catch {}
+                } label: {
+                    Label(
+                        model.isSaving ? "正在保存" : "保存到我的贴纸库",
+                        systemImage: "square.and.arrow.down.fill"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.drafts.isEmpty || model.isSaving)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
+            }
         }
     }
 }
@@ -233,6 +239,6 @@ private struct EditStickerSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 }

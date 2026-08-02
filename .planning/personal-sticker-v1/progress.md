@@ -70,6 +70,9 @@
 | 2026-08-02 | ADR 0004 wording conflicted with the later decision to defer V1 monetization | 1 | Changed the ADR to refer only to any future in-app purchases. |
 | 2026-08-02 | First extension compile used nonexistent `MSStickerSize.medium` | 1 | Replaced it with the SDK-defined `.regular` case. |
 | 2026-08-02 | Second compile found an iOS 18-only symbol animation and an invalid Section initializer | 1 | Replaced them with iOS 17-compatible forms; also removed an unnecessary sendable closure annotation that produced a future Swift 6 warning. |
+| 2026-08-02 | Simulator accessibility typing rejected Chinese characters | 1 | Recorded this as an automation-tool limitation and used ASCII text to verify the same caption replacement and local image re-render path. |
+| 2026-08-02 | `simctl get_app_container` rejected the App Group identifier as a direct container argument | 1 | Switched to requesting the installed app's `groups` listing first, then resolving the exact shared-container path from that output. |
+| 2026-08-02 | Final combined verification command had a shell-quoting parse error in its secret pattern | 1 | Split the secret scan into simple fixed expressions and reran the remaining checks without nested quote syntax. |
 
 ## 5-Question Reboot Check
 
@@ -80,3 +83,18 @@
 | What's the goal? | Ship an iOS app that creates reusable personal reaction-sticker packs from reference photos. |
 | What have I learned? | See `findings.md`. |
 | What have I done? | Replaced the legacy diary target with the new modular personal-sticker app, local library, mock generator, and dynamic Messages extension. |
+
+### Runtime verification: 2026-08-02
+
+- Detected the user-booted iPhone 17 simulator running iOS 26.5.
+- Built, installed, and launched the containing app successfully with its embedded Messages extension.
+- Verified the production entry screen renders correctly, presents all twelve accepted reactions, and keeps generation disabled until a photo is available.
+- Opened the system Photos picker and confirmed the imported test image is visible. The picker does not expose photo thumbnails as automation targets, so added a Debug-only `-UITestUseDemoPhoto` launch argument that supplies an existing bundled image; Release behavior is unchanged.
+- Used the debug photo path to complete mock generation and reach the twelve-sticker review screen successfully.
+- Verified caption editing re-renders the selected PNG and updates the review label; verified pack saving, favorite toggling, full process termination, relaunch, and favorite persistence.
+- Found and fixed missing App Group entitlement keys in both targets. After rebuilding, iOS created `group.com.jackyrwj.PersonalSticker` and the app stored the manifest plus exactly 12 PNGs in that shared container.
+- Verified saved output is 408 × 408 PNG; the largest test sticker is 102,930 bytes, safely below the 500 KB iMessage sticker limit.
+- Verified iOS registers `com.jackyrwj.PersonalSticker.MessagesExtension` as a `com.apple.message-payload-provider` plugin and the Messages extension can decode the shared manifest shape.
+- Opened a simulator Messages conversation and reached the system “贴纸” surface from its add menu; visual confirmation of the custom collection is the remaining extension-runtime check.
+- Fixed the review screen's initial scroll position and made the caption editor open at full height. Rebuilt and runtime-verified that review starts at its heading and the caption field is immediately available to accessibility automation.
+- Created a second pack, deleted it through the confirmation flow, and verified the manifest returned to one pack while shared PNG count returned from 24 to 12. Pack deletion cleans its files without damaging the remaining pack.
