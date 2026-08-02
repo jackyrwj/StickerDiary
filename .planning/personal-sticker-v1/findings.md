@@ -44,12 +44,15 @@
 | App Group for approved extension assets | The containing app and sticker extension need a supported shared container. |
 | Provider-neutral server API | Keeps credentials off-device and reduces model lock-in. |
 | Mock generation path from the first build | Enables deterministic previews, tests, simulator work, and UI progress before paid cloud calls. |
+| Likeness gate before pack generation | Generate one character anchor, ask the user whether it is recognizable, and do not spend twelve generations until it passes. |
+| Deterministic local sticker cleanup | Automatically remove nontransparent backgrounds, crop the visible subject with safe padding, and validate edges on light and dark backgrounds instead of trusting model transparency. |
 
 ## Issues and Risks
 
 | Issue | Planned response |
 |---|---|
 | One photo may not preserve identity reliably | Accept up to four references and request more when likeness confidence is low. |
+| Stronger identity wording may still produce a generic chibi face | A/B test prompt constraints, but rely on multiple references and user approval of a character anchor rather than repeated prompt-only retries. |
 | Twelve independent generations may drift in style or identity | Create a reusable character anchor and feed it into every reaction generation. |
 | AI may render broken Chinese text | Generate art without text and render captions locally. |
 | Partial generation failure can waste time and cost | Model each reaction as an independent attempt with resumable job state. |

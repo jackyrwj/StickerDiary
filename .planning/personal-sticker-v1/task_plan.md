@@ -45,7 +45,7 @@ Phase 3 — AI generation pipeline
 
 - [x] Define the provider-neutral backend contract. (Alibaba Cloud Model Studio is the first provider; iOS only sees the app-owned single-sticker endpoint.)
 - [ ] Implement a secure server-side image-model adapter and generation job lifecycle. (The secure adapter is implemented; persistent jobs, public-service authentication, and recovery remain.)
-- [ ] Benchmark candidate models with a fixed likeness and reaction test set.
+- [ ] Benchmark candidate models with a fixed likeness and reaction test set, including base-vs-identity-prompt A/B output and single-vs-multiple-reference comparisons.
 - [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry. (The iOS backend path, normalized errors, and one-image credential test are complete; remaining lifecycle states are pending.)
 - **Status:** pending
 
@@ -54,7 +54,7 @@ Phase 3 — AI generation pipeline
 - [x] Generate the twelve accepted conversational intents in the mock flow.
 - [x] Render exact editable Chinese captions locally.
 - [ ] Build review, delete, caption edit, and single-sticker regeneration flows. (Review, delete, and caption editing are implemented and runtime-verified; single-sticker regeneration remains.)
-- [ ] Validate transparency, visual consistency, file size, and accessibility descriptions.
+- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions.
 - **Status:** pending
 
 ### Phase 5: iOS system Stickers integration
@@ -95,6 +95,8 @@ Phase 3 — AI generation pipeline
 | Use a backend proxy for cloud AI | API secrets must never ship in the iOS binary and the model provider must remain replaceable. |
 | Use Alibaba Cloud Model Studio `wan2.7-image-pro` as the first image provider candidate | The owner already has Model Studio access, and the current model supports multi-image editing and subject-feature preservation. |
 | Defer ads, subscriptions, and in-app purchases | The product owner asked to validate and finish the core app before monetization. |
+| Treat identity-focused prompting as an aid, not a likeness guarantee | The first real Wan result kept clothing and accessories but generalized the face; user-approved character anchors and additional references provide the actual quality gate. |
+| Always post-process model output into a transparent, tightly cropped sticker | The first real result had a visually opaque background, and model-produced transparency is not reliable enough for system sticker delivery. |
 
 ## Errors Encountered
 
