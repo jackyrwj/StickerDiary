@@ -30,6 +30,7 @@
 - Current Wan image-editing guidance recommends `wan2.7-image-pro` for multi-image editing and subject-feature preservation. It accepts one to four private images as Base64 data URLs in `messages[].content`, supports synchronous HTTP at the workspace-specific Beijing `/services/aigc/multimodal-generation/generation` endpoint, and returns temporary image URLs that expire after 24 hours. The backend must download the output immediately.
 - The current Wan 2.7 edit API accepts `1K` output for editing. This is sufficient because the iOS client normalizes final stickers to 408 × 408 PNG.
 - Alibaba's current console guidance says the workspace ID can be copied from the upper-right workspace control on the Model Studio console home page after selecting the target region. Beijing and several other regions require the workspace ID in the base URL; workspace-specific domains are the recommended production endpoint, while the older DashScope domain remains mainly for compatibility.
+- The first real call reached an HTTP 404 before generation because `DASHSCOPE_BASE_URL` pointed to the OpenAI-compatible `/compatible-mode/v1` API. Wan 2.7 synchronous image editing instead uses the native region-specific workspace endpoint ending in `/api/v1`.
 - Apple permits renaming an app, but the accepted plan is to use a new App Store record and bundle identifier because the product is fundamentally different.
 
 ## Technical Decisions

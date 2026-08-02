@@ -106,6 +106,7 @@ Phase 3 — AI generation pipeline
 | Xcode could not find the new backend generator source | 1 | The generated project had not been refreshed after adding a new Swift file; regenerate it from `project.yml` before rebuilding. |
 | Regenerating the Xcode project erased the manually populated App Group entitlement files | 1 | Move the App Group values into `project.yml` entitlement properties so every regeneration recreates both files correctly. |
 | Node 26 test discovery executed the manual paid-test script, and the secret scan matched a documentation placeholder | 1 | Restrict unit tests to `test/*.test.js` and remove the key-shaped prefix from documentation examples. |
+| First real Alibaba one-image request returned HTTP 404 before generation | 1 | The configured URL was the OpenAI-compatible `/compatible-mode/v1` route. Wan 2.7 image editing requires a region-specific workspace URL ending in `/api/v1`; wait for the owner to correct it before retrying. |
 
 ## Notes
 

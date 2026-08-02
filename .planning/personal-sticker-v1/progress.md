@@ -76,6 +76,7 @@
 | 2026-08-02 | Simulator accessibility typing rejected Chinese characters | 1 | Recorded this as an automation-tool limitation and used ASCII text to verify the same caption replacement and local image re-render path. |
 | 2026-08-02 | `simctl get_app_container` rejected the App Group identifier as a direct container argument | 1 | Switched to requesting the installed app's `groups` listing first, then resolving the exact shared-container path from that output. |
 | 2026-08-02 | Final combined verification command had a shell-quoting parse error in its secret pattern | 1 | Split the secret scan into simple fixed expressions and reran the remaining checks without nested quote syntax. |
+| 2026-08-02 | First real Alibaba one-image request returned HTTP 404 in 0.62 seconds, before any image result | 1 | Safely inspected URL structure without exposing credentials: it was the OpenAI-compatible `/compatible-mode/v1` route. Asked the owner to replace it with the region-specific workspace `/api/v1` URL before retrying. |
 
 ## 5-Question Reboot Check
 
