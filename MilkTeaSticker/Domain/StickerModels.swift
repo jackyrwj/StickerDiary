@@ -104,8 +104,19 @@ enum GenerationPhase: Equatable {
 }
 
 protocol StickerGenerating: Sendable {
+    var mode: StickerGenerationMode { get }
+
     func generate(
         from referencePhotoData: [Data],
         progress: @escaping (Int, ReactionIntent) async -> Void
     ) async throws -> [StickerDraft]
+}
+
+enum StickerGenerationMode: Equatable, Sendable {
+    case mock
+    case backend
+}
+
+extension StickerGenerating {
+    var mode: StickerGenerationMode { .mock }
 }

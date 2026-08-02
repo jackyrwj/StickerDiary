@@ -3,16 +3,22 @@ import SwiftUI
 struct GenerationView: View {
     let library: StickerLibrary
     let onSaved: () -> Void
+    private let generationMode: StickerGenerationMode
     @State private var model: GenerationViewModel
 
     init(
         request: GenerationRequest,
         library: StickerLibrary,
+        generator: any StickerGenerating,
         onSaved: @escaping () -> Void
     ) {
         self.library = library
         self.onSaved = onSaved
-        _model = State(initialValue: GenerationViewModel(request: request))
+        generationMode = generator.mode
+        _model = State(initialValue: GenerationViewModel(
+            request: request,
+            generator: generator
+        ))
     }
 
     var body: some View {
@@ -73,12 +79,12 @@ struct GenerationView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("这一包先这样")
                                 .font(.system(.title, design: .rounded, weight: .bold))
-                            Text("点开任意贴纸可修改文字或删除。真实 AI 接入后还可以单张重做。")
+                            Text("点开任意贴纸可修改文字或删除。单张重做将在下一阶段加入。")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        PrototypeBadge()
+                        PrototypeBadge(mode: generationMode)
                     }
 
                     TextField("贴纸包名称", text: $model.packName)

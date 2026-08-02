@@ -23,6 +23,9 @@ targets:
       - path: MilkTeaSticker/Assets.xcassets
     entitlements:
       path: MilkTeaSticker/PersonalSticker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jackyrwj.PersonalSticker
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jackyrwj.PersonalSticker
@@ -47,6 +50,9 @@ targets:
       - path: PersonalStickerMessages
     entitlements:
       path: PersonalStickerMessages/PersonalStickerMessages.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jackyrwj.PersonalSticker
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jackyrwj.PersonalSticker.MessagesExtension

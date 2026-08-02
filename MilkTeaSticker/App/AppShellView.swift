@@ -7,11 +7,12 @@ enum AppTab: Hashable {
 
 struct AppShellView: View {
     let library: StickerLibrary
+    let generator: any StickerGenerating
     @State private var selectedTab: AppTab = .create
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            CreateFlowView(library: library) {
+            CreateFlowView(library: library, generator: generator) {
                 selectedTab = .library
             }
             .tabItem {
@@ -38,5 +39,8 @@ enum AppTheme {
 }
 
 #Preview {
-    AppShellView(library: StickerLibrary.preview)
+    AppShellView(
+        library: StickerLibrary.preview,
+        generator: MockStickerGenerationService()
+    )
 }

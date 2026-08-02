@@ -6,11 +6,11 @@ Deliver a new native iOS app that turns reference photos into a reusable, high-l
 
 ## Next Step
 
-Boot an iPhone simulator, run the offline vertical slice end to end, inspect the UI, and verify persistence plus the system sticker extension at runtime.
+Implement the provider-neutral backend contract and an Alibaba Cloud Model Studio adapter, then connect the iOS generator to that backend without shipping the API key in the app.
 
 ## Current Phase
 
-Phase 2 — Local sticker domain and library
+Phase 3 — AI generation pipeline
 
 ## Phases
 
@@ -43,10 +43,10 @@ Phase 2 — Local sticker domain and library
 
 ### Phase 3: AI generation pipeline
 
-- [ ] Define the provider-neutral backend contract.
-- [ ] Implement a secure server-side image-model adapter and generation job lifecycle.
+- [x] Define the provider-neutral backend contract. (Alibaba Cloud Model Studio is the first provider; iOS only sees the app-owned single-sticker endpoint.)
+- [ ] Implement a secure server-side image-model adapter and generation job lifecycle. (The secure adapter is implemented; persistent jobs, public-service authentication, and recovery remain.)
 - [ ] Benchmark candidate models with a fixed likeness and reaction test set.
-- [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry.
+- [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry. (The iOS backend path and normalized errors are implemented; a one-image credential test and remaining lifecycle states are pending.)
 - **Status:** pending
 
 ### Phase 4: Core reaction-pack workflow
@@ -75,7 +75,7 @@ Phase 2 — Local sticker domain and library
 
 ## Key Questions
 
-1. Which backend host and image-model provider will be used for the first real generation build?
+1. Which production host will run the backend after the local Alibaba Cloud Model Studio integration is validated?
 2. What is the final product name and visual identity?
 3. Is V1 entirely local apart from AI generation, or should iCloud sync be included?
 4. Which reference-photo retention and server-deletion policy will be promised to users?
@@ -93,6 +93,7 @@ Phase 2 — Local sticker domain and library
 | Generate a curated twelve-intent core pack without a prompt box | It produces immediate conversational utility and avoids asking users to design their own product experience. |
 | Add captions locally, outside the image model | Chinese text remains exact, editable, accessible, and consistently styled. |
 | Use a backend proxy for cloud AI | API secrets must never ship in the iOS binary and the model provider must remain replaceable. |
+| Use Alibaba Cloud Model Studio `wan2.7-image-pro` as the first image provider candidate | The owner already has Model Studio access, and the current model supports multi-image editing and subject-feature preservation. |
 | Defer ads, subscriptions, and in-app purchases | The product owner asked to validate and finish the core app before monetization. |
 
 ## Errors Encountered
@@ -102,6 +103,9 @@ Phase 2 — Local sticker domain and library
 | `MSStickerSize.medium` does not exist | 1 | Used the SDK-defined `.regular` case, which Apple describes as the medium display size. |
 | iOS 17 compile rejected iOS 18 `breathe` symbol effect and shorthand Section header/footer syntax | 1 | Switched to the iOS 17 `pulse` effect and the explicit Section content/header/footer initializer. |
 | Runtime install had no App Group entitlements, so the extension could not read app-created stickers | 1 | Added the shared application-group entitlement to both the containing app and Messages extension, then required a second runtime verification pass. |
+| Xcode could not find the new backend generator source | 1 | The generated project had not been refreshed after adding a new Swift file; regenerate it from `project.yml` before rebuilding. |
+| Regenerating the Xcode project erased the manually populated App Group entitlement files | 1 | Move the App Group values into `project.yml` entitlement properties so every regeneration recreates both files correctly. |
+| Node 26 test discovery executed the manual paid-test script, and the secret scan matched a documentation placeholder | 1 | Restrict unit tests to `test/*.test.js` and remove the key-shaped prefix from documentation examples. |
 
 ## Notes
 

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		06EDF1E346DE4E94447A0465 /* MockStickerGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */; };
 		0C17978B518BA903BDF83C81 /* PersonalStickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BEDDE8CCF225D4F073FA997 /* PersonalStickerApp.swift */; };
+		24AFAC5D3154F58DA9364D5A /* BackendStickerGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804872C99F74F5E1A4B6DFB6 /* BackendStickerGenerationService.swift */; };
 		354D74C1C042F05505CF0800 /* StickerPackDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F431E530FB698C893A0B1655 /* StickerPackDetailView.swift */; };
 		3C7FDBFEFAE45B19282EF6A5 /* StickerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709D804B71C2B366138A4767 /* StickerModels.swift */; };
 		3D7AEDED4BD2B0CD38441791 /* StickerArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDAC303685803DD6F67159F /* StickerArtworkView.swift */; };
@@ -63,6 +64,7 @@
 		6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStickerRepository.swift; sourceTree = "<group>"; };
 		709D804B71C2B366138A4767 /* StickerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerModels.swift; sourceTree = "<group>"; };
 		71BCCB49E444F3A367DE6C47 /* CreateStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateStickerView.swift; sourceTree = "<group>"; };
+		804872C99F74F5E1A4B6DFB6 /* BackendStickerGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendStickerGenerationService.swift; sourceTree = "<group>"; };
 		806C3585AC5156BF2FF09738 /* PersonalStickerMessages.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PersonalStickerMessages.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8854ECDC80053EC80B78C7D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8F8B862090D443CEFB4B623E /* StickerLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerLibrary.swift; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 		2AEDE6688D0473C3E01ACCAF /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				804872C99F74F5E1A4B6DFB6 /* BackendStickerGenerationService.swift */,
 				DB66018AE2078095501E8A1F /* MockStickerGenerationService.swift */,
 				6CFDFA8C7FE5ACB3DD0FAA9B /* SharedStickerRepository.swift */,
 				8F8B862090D443CEFB4B623E /* StickerLibrary.swift */,
@@ -291,6 +294,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5D24D61BE807CDD083D29445 /* AppShellView.swift in Sources */,
+				24AFAC5D3154F58DA9364D5A /* BackendStickerGenerationService.swift in Sources */,
 				86393D07227E97420C7ED738 /* CreateFlowView.swift in Sources */,
 				ED0714EF189D36A7172C3AD9 /* CreateStickerView.swift in Sources */,
 				FECA0CEC94DF84BA5922D2AC /* GenerationView.swift in Sources */,

@@ -3,3 +3,7 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 build/
+.env
+backend/.env
+backend/node_modules/
+backend/.local-test-output.*

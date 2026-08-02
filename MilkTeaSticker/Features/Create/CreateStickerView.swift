@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct CreateStickerView: View {
+    let generationMode: StickerGenerationMode
     let onContinue: (GenerationRequest) -> Void
 
     @State private var selectedItems: [PhotosPickerItem] = []
@@ -48,7 +49,7 @@ struct CreateStickerView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
-            PrototypeBadge()
+            PrototypeBadge(mode: generationMode)
             Text("一组照片，变成聊天里\n真正用得上的表情")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .minimumScaleFactor(0.8)
@@ -129,12 +130,21 @@ struct CreateStickerView: View {
 
     private var privacyNote: some View {
         Label(
-            "当前原型只在本机处理所选照片，不会上传。接入真实 AI 前会再次明确告知你。",
+            privacyMessage,
             systemImage: "lock.shield.fill"
         )
         .font(.footnote)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var privacyMessage: String {
+        switch generationMode {
+        case .mock:
+            "当前原型只在本机处理所选照片，不会上传。接入真实 AI 前会再次明确告知你。"
+        case .backend:
+            "所选照片会发送到你的私有生成后端，并由阿里云百炼处理；百炼 Key 不保存在 App 内。"
+        }
     }
 
     private var continueButton: some View {
@@ -278,6 +288,6 @@ private struct FlowLayout: Layout {
 
 #Preview {
     NavigationStack {
-        CreateStickerView { _ in }
+        CreateStickerView(generationMode: .mock) { _ in }
     }
 }

@@ -31,13 +31,29 @@ struct StickerArtworkView: View {
 }
 
 struct PrototypeBadge: View {
+    var mode: StickerGenerationMode = .mock
+
     var body: some View {
-        Label("原型模式 · 暂用模拟图", systemImage: "hammer.fill")
+        Label(label, systemImage: mode == .mock ? "hammer.fill" : "cloud.fill")
             .font(.caption.weight(.semibold))
             .foregroundStyle(AppTheme.accent)
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(AppTheme.accent.opacity(0.10), in: Capsule())
-            .accessibilityLabel("当前为原型模式，生成结果使用模拟图片")
+            .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var label: String {
+        switch mode {
+        case .mock: "原型模式 · 暂用模拟图"
+        case .backend: "AI 后端生成模式"
+        }
+    }
+
+    private var accessibilityLabel: String {
+        switch mode {
+        case .mock: "当前为原型模式，生成结果使用模拟图片"
+        case .backend: "当前使用 AI 后端生成图片"
+        }
     }
 }

@@ -60,7 +60,10 @@
 | iOS Simulator build | `PersonalSticker` Debug scheme, iOS 17 minimum | App and Messages extension compile and embed | Build succeeded | Pass |
 | Extension metadata | Built Messages extension `Info.plist` | Dynamic Messages extension and system media context declared | Required keys and both presentation contexts present | Pass |
 | Source secret scan | New app and extension Swift sources | No client API credentials | No matches | Pass |
-| Runtime UI and persistence | Booted iPhone simulator | Complete create/edit/save/relaunch flow | No simulator was booted | Pending |
+| Runtime UI and persistence | Booted iPhone simulator | Complete create/edit/save/relaunch flow | Creation, edit, save, favorite, relaunch, and deletion passed | Pass |
+| Backend unit tests | Provider request, validation, and error fixtures | Contract is stable without real credentials | 5 of 5 tests passed | Pass |
+| iOS-backend contract | Local fixture backend, twelve fixed reactions | iOS uploads normalized photos and renders returned images | Reached twelve-sticker review through backend mode | Pass |
+| Real Alibaba generation | User API key and workspace URL | Generate one paid test image | Credentials not yet added to ignored `.env` | Pending |
 
 ## Error Log
 
@@ -98,3 +101,20 @@
 - Opened a simulator Messages conversation and reached the system “贴纸” surface from its add menu; visual confirmation of the custom collection is the remaining extension-runtime check.
 - Fixed the review screen's initial scroll position and made the caption editor open at full height. Rebuilt and runtime-verified that review starts at its heading and the caption field is immediately available to accessibility automation.
 - Created a second pack, deleted it through the confirmation flow, and verified the manifest returned to one pack while shared PNG count returned from 24 to 12. Pack deletion cleans its files without damaging the remaining pack.
+
+### Phase 3: Alibaba Cloud Model Studio integration
+
+- **Status:** in progress
+- The product owner selected Alibaba Cloud Model Studio (百炼).
+- Confirmed against current official documentation that `wan2.7-image-pro` supports multi-image editing, Base64 data URLs, 1K editing output, and synchronous HTTP through a workspace-specific endpoint. Output URLs expire after 24 hours.
+- Added a dependency-free Node.js backend with strict fixed-intent validation, server-owned prompts, private Base64 image forwarding, immediate result download, normalized errors, request-size limits, and no request-body logging.
+- Added `backend/.env.example`; the real `DASHSCOPE_API_KEY` and workspace URL belong only in ignored `backend/.env`.
+- Added five backend unit tests covering request construction, temporary-image download, rate-limit normalization, accepted private images, and rejection of arbitrary prompts. All five pass.
+- Added an iOS backend generator selected only by the Debug launch argument `-StickerBackendURL`; without it, previews and normal development builds continue to use the deterministic local mock.
+- Added client-side reference-image normalization to JPEG before upload and local 408 × 408 rendering of returned artwork before exact caption rendering.
+- Regenerated the Xcode project, compiled successfully, and completed a simulator contract test against a local fixture backend. The iOS app sent all twelve fixed reaction requests through HTTP and reached the review screen without using a real API key.
+- Made generation mode user-visible: backend mode now explicitly says selected photos are sent to the private backend and processed by Alibaba Cloud Model Studio; mock mode retains the local-only notice.
+- Moved both App Group entitlement values into `project.yml` and verified project regeneration recreates them instead of erasing them.
+- Added a manual one-image paid test command so the first credential check costs one generation instead of triggering the full twelve-image pack.
+- Verified a launch without `-StickerBackendURL` still selects the local mock and displays the local-only privacy notice; backend and mock development modes remain isolated.
+- Made local scripts ignore inherited DashScope variables before loading `backend/.env`, preventing an old shell credential from silently overriding the newly pasted key. Verified an empty local file produces a safe `503 configuration_required` health response without calling Alibaba.

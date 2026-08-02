@@ -1,0 +1,16 @@
+{
+  "name": "personal-sticker-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "dev": "env -u DASHSCOPE_API_KEY -u DASHSCOPE_BASE_URL -u DASHSCOPE_MODEL -u PORT node --env-file=.env --watch src/server.js",
+    "start:local": "env -u DASHSCOPE_API_KEY -u DASHSCOPE_BASE_URL -u DASHSCOPE_MODEL -u PORT node --env-file=.env src/server.js",
+    "start": "node src/server.js",
+    "test:aliyun": "env -u DASHSCOPE_API_KEY -u DASHSCOPE_BASE_URL -u DASHSCOPE_MODEL node --env-file=.env scripts/test-generation.js",
+    "test": "node --test test/*.test.js"
+  }
+}

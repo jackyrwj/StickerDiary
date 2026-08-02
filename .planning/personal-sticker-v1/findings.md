@@ -26,6 +26,10 @@
 - Apple documents that a coded iMessage extension can provide a runtime-changing collection through `MSStickerBrowserViewController`. By declaring the media presentation context, the extension can appear in the system Stickers app accessible from the emoji keyboard; this is the appropriate path for user-generated packs. A no-code Sticker Pack target is static and is not sufficient for this product.
 - Apple requires advertising to stay in the main app binary and outside extensions; monetization is deferred for V1 regardless.
 - Reference-image models from Alibaba, Google, and OpenAI support image editing and varying degrees of character consistency; provider selection requires a controlled benchmark.
+- The product owner selected Alibaba Cloud Model Studio (百炼) as the first production provider. Current official guidance uses the `DASHSCOPE_API_KEY` environment variable; the key is region-specific and must never be placed in Swift or committed files.
+- Current Wan image-editing guidance recommends `wan2.7-image-pro` for multi-image editing and subject-feature preservation. It accepts one to four private images as Base64 data URLs in `messages[].content`, supports synchronous HTTP at the workspace-specific Beijing `/services/aigc/multimodal-generation/generation` endpoint, and returns temporary image URLs that expire after 24 hours. The backend must download the output immediately.
+- The current Wan 2.7 edit API accepts `1K` output for editing. This is sufficient because the iOS client normalizes final stickers to 408 × 408 PNG.
+- Alibaba's current console guidance says the workspace ID can be copied from the upper-right workspace control on the Model Studio console home page after selecting the target region. Beijing and several other regions require the workspace ID in the base URL; workspace-specific domains are the recommended production endpoint, while the older DashScope domain remains mainly for compatibility.
 - Apple permits renaming an app, but the accepted plan is to use a new App Store record and bundle identifier because the product is fundamentally different.
 
 ## Technical Decisions
