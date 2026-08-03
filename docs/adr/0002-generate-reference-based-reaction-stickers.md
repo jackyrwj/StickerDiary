@@ -4,4 +4,4 @@ The product will use reference-image editing to generate poses and expressions t
 
 ## Consequences
 
-Sticker text remains a separate local rendering layer so wording is accurate and editable. Generation must preserve a reusable character identity across a pack, allow additional reference photos when one photo is insufficient, and keep the image-model provider replaceable.
+Sticker text remains a separate local rendering layer so wording is accurate and editable. Generation must preserve a reusable character identity across a pack, allow additional reference photos when one photo is insufficient, and keep the image-model provider replaceable. Prompt wording may improve feature retention but is not treated as a likeness guarantee. V1 goes directly from selected references to pack generation without a mandatory character-anchor confirmation step; users can add references or regenerate unsatisfactory stickers during review. The local renderer must remove opaque backgrounds, crop the visible subject with safe padding, and produce the final transparent sticker asset regardless of model background behavior.

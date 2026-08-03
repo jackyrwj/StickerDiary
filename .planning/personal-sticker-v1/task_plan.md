@@ -6,11 +6,11 @@ Deliver a new native iOS app that turns reference photos into a reusable, high-l
 
 ## Next Step
 
-Validate `docs/product/personal-sticker-v1-plan.md` against the glossary and ADRs, then review it with the product owner for explicit scope confirmation.
+Implement the provider-neutral backend contract and an Alibaba Cloud Model Studio adapter, then connect the iOS generator to that backend without shipping the API key in the app.
 
 ## Current Phase
 
-Phase 0 — Product and implementation planning
+Phase 3 — AI generation pipeline
 
 ## Phases
 
@@ -21,46 +21,46 @@ Phase 0 — Product and implementation planning
 - [x] Record the domain language and hard-to-reverse decisions.
 - [x] Complete the detailed V1 plan.
 - [x] Validate the detailed V1 plan against the glossary and ADRs.
-- [ ] Review the detailed V1 plan with the product owner.
-- [ ] Resolve blocking open decisions and confirm shared understanding.
-- **Status:** in_progress
+- [x] Review the detailed V1 plan with the product owner.
+- [x] Resolve blocking open decisions and confirm shared understanding.
+- **Status:** complete
 
 ### Phase 1: Safe project scaffolding
 
-- [ ] Create a dedicated implementation branch and isolated worktree.
-- [ ] Establish a new modular SwiftUI app shell and sticker extension target.
-- [ ] Add mock services, previews, routing, dependency injection, and build verification.
-- [ ] Remove all client-side API credentials from the new product.
-- **Status:** pending
+- [x] Create a dedicated implementation branch and isolated worktree.
+- [x] Establish a new modular SwiftUI app shell and sticker extension target.
+- [x] Add mock services, previews, routing, dependency injection, and build verification.
+- [x] Remove all client-side API credentials from the new product.
+- **Status:** complete
 
 ### Phase 2: Local sticker domain and library
 
 - [ ] Implement sticker characters, reference photos, packs, reaction stickers, and generation jobs.
-- [ ] Store metadata locally and image assets as files.
+- [x] Store metadata locally and image assets as files.
 - [ ] Build character creation, pack library, favorites, recent items, and deletion.
-- [ ] Verify persistence, relaunch behavior, empty states, and storage cleanup.
-- **Status:** pending
+- [x] Verify persistence, relaunch behavior, empty states, and storage cleanup.
+- **Status:** in_progress
 
 ### Phase 3: AI generation pipeline
 
-- [ ] Define the provider-neutral backend contract.
-- [ ] Implement a secure server-side image-model adapter and generation job lifecycle.
-- [ ] Benchmark candidate models with a fixed likeness and reaction test set.
-- [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry.
+- [x] Define the provider-neutral backend contract. (Alibaba Cloud Model Studio is the first provider; iOS only sees the app-owned single-sticker endpoint.)
+- [ ] Implement a secure server-side image-model adapter and generation job lifecycle. (The secure adapter is implemented; persistent jobs, public-service authentication, and recovery remain.)
+- [ ] Benchmark candidate models with a fixed likeness and reaction test set, including base-vs-identity-prompt A/B output and single-vs-multiple-reference comparisons. (The first two-reference Wan twelve-pack test passed stability and reaction clarity but failed the pack-consistency bar; consistency-strategy and candidate comparisons remain.)
+- [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry. (The iOS backend path, normalized errors, and one-image credential test are complete; remaining lifecycle states are pending.)
 - **Status:** pending
 
 ### Phase 4: Core reaction-pack workflow
 
-- [ ] Generate the twelve accepted conversational intents.
-- [ ] Render exact editable Chinese captions locally.
-- [ ] Build review, delete, caption edit, and single-sticker regeneration flows.
-- [ ] Validate transparency, visual consistency, file size, and accessibility descriptions.
+- [x] Generate the twelve accepted conversational intents in the mock flow.
+- [x] Render exact editable Chinese captions locally.
+- [ ] Build review, delete, caption edit, and single-sticker regeneration flows. (Review, delete, and caption editing are implemented and runtime-verified; single-sticker regeneration remains.)
+- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions. (Vision plus connected-border cleanup passed all 12 outputs from the first full real Wan pack; broader light/dark, varied-background, and accessibility tests remain.)
 - **Status:** pending
 
 ### Phase 5: iOS system Stickers integration
 
-- [ ] Share approved sticker assets through an App Group.
-- [ ] Present dynamic user-created stickers in the system Stickers experience.
+- [x] Share approved sticker assets through an App Group.
+- [x] Implement dynamic presentation of user-created stickers with a Messages extension.
 - [ ] Verify install, refresh, deletion, upgrade, and no-network reuse behavior.
 - [ ] Keep all advertising, purchasing, and marketing out of the extension.
 - **Status:** pending
@@ -75,7 +75,7 @@ Phase 0 — Product and implementation planning
 
 ## Key Questions
 
-1. Which backend host and image-model provider will be used for the first real generation build?
+1. Which production host will run the backend after the local Alibaba Cloud Model Studio integration is validated?
 2. What is the final product name and visual identity?
 3. Is V1 entirely local apart from AI generation, or should iCloud sync be included?
 4. Which reference-photo retention and server-deletion policy will be promised to users?
@@ -93,13 +93,34 @@ Phase 0 — Product and implementation planning
 | Generate a curated twelve-intent core pack without a prompt box | It produces immediate conversational utility and avoids asking users to design their own product experience. |
 | Add captions locally, outside the image model | Chinese text remains exact, editable, accessible, and consistently styled. |
 | Use a backend proxy for cloud AI | API secrets must never ship in the iOS binary and the model provider must remain replaceable. |
+| Use Alibaba Cloud Model Studio `wan2.7-image-pro` as the first image provider candidate | The owner already has Model Studio access, and the current model supports multi-image editing and subject-feature preservation. |
 | Defer ads, subscriptions, and in-app purchases | The product owner asked to validate and finish the core app before monetization. |
+| Treat identity-focused prompting as an aid, not a likeness guarantee | The first real Wan result kept clothing and accessories but generalized the face; V1 relies on up to four references plus review and regeneration, without a mandatory character-anchor confirmation step. |
+| Always post-process model output into a transparent, tightly cropped sticker | The first real result had a visually opaque background, and model-produced transparency is not reliable enough for system sticker delivery. |
+| Skip a separate character-anchor confirmation step in V1 | The owner prefers the shorter direct-to-pack flow; likeness problems are handled by adding references or regenerating individual results during review. |
 
 ## Errors Encountered
 
 | Error | Attempt | Resolution |
 |---|---:|---|
-| No implementation errors yet | 1 | Phase 0 remains documentation-only. |
+| `MSStickerSize.medium` does not exist | 1 | Used the SDK-defined `.regular` case, which Apple describes as the medium display size. |
+| iOS 17 compile rejected iOS 18 `breathe` symbol effect and shorthand Section header/footer syntax | 1 | Switched to the iOS 17 `pulse` effect and the explicit Section content/header/footer initializer. |
+| Runtime install had no App Group entitlements, so the extension could not read app-created stickers | 1 | Added the shared application-group entitlement to both the containing app and Messages extension, then required a second runtime verification pass. |
+| Xcode could not find the new backend generator source | 1 | The generated project had not been refreshed after adding a new Swift file; regenerate it from `project.yml` before rebuilding. |
+| Regenerating the Xcode project erased the manually populated App Group entitlement files | 1 | Move the App Group values into `project.yml` entitlement properties so every regeneration recreates both files correctly. |
+| Node 26 test discovery executed the manual paid-test script, and the secret scan matched a documentation placeholder | 1 | Restrict unit tests to `test/*.test.js` and remove the key-shaped prefix from documentation examples. |
+| First real Alibaba one-image request returned HTTP 404 before generation | 1 | The configured URL was the OpenAI-compatible `/compatible-mode/v1` route. Changing to the mainland native `/api/v1` route succeeded on the next, non-identical request. |
+| Initial source search assumed a nonexistent `PersonalSticker/` directory | 1 | No files were changed; resolve source paths from `project.yml` and `rg --files` before implementing image cleanup. |
+| Runtime cleanup verification did not reach the expected review text within 60 seconds | 1 | The review screen completed just after the wait and used different visible text; inspected the live UI instead of repeating the selector wait. |
+| Vision alone preserved the Wan image's off-white rectangle as foreground | 1 | Added an on-device connected-border color cleanup fallback, then reran the same no-cost local fixture and verified transparent corners plus tight subject bounds. |
+| Combined regression check referenced app entitlements from the `backend` subdirectory | 1 | Backend tests had already passed; rerun only the remaining checks from the repository root with correct paths. |
+| `plutil -extract` treated the dotted App Group entitlement key as a key path | 1 | Use PlistBuddy's quoted dictionary key lookup for the remaining entitlement verification. |
+| Final secret scan matched the README's Chinese API-key placeholder | 1 | The placeholder is not a credential; narrow the tracked-file scan to actual key-shaped values before completing verification. |
+| Raw twelve-image contact sheet could not resolve the requested PingFang font name | 1 | Generation outputs are intact; enumerate ImageMagick-visible fonts and rebuild the local overview without another provider call. |
+| ImageMagick `montage` still required a font even with labels removed | 2 | No fonts are registered in this environment; switch to font-free row/column image append operations. |
+| Helper script failed to parse the current simulator scroll element reference | 1 | No gesture ran; request a fresh UI snapshot and use the returned scroll reference directly. |
+| Exported final contact sheet misordered same-second simulator files | 1 | App ordering and assets are correct; seconds-resolution mtimes are not a stable mapping. Rebuild the external sheet using the visually verified reaction-to-file mapping. |
+| First photoreal comparison request was rejected with Alibaba `overdue-payment` access denial | 1 | Zero images were generated and the remaining two calls were not attempted. Do not retry until the owner restores the mainland Alibaba account billing status. |
 
 ## Notes
 
