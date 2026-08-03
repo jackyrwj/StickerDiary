@@ -147,3 +147,10 @@
 - All twelve exported PNGs passed 408 × 408 size and transparent-corner checks, ranging from 97,931 to 152,911 bytes. The first external contact sheet paired several filenames incorrectly because simulator writes shared the same second-level timestamp; rebuild it from the verified visual reaction mapping rather than relying on mtime order.
 - Rebuilt and visually verified the corrected final contact sheet at `/tmp/personal-sticker-pack.Wy77X4/final-corrected/final-contact-sheet.png`. Final verdict: reaction clarity and asset processing pass; personal likeness is recognizable but pack-wide identity/style consistency fails the intended production bar. Do not spend another twelve-call batch without changing the consistency strategy.
 - Final regression passed: backend prompt/adapter tests 5/5, tracked credential scan clean, `git diff --check` clean, and repository status contains only the intended prompt, test, plan, and findings updates. Both references and all raw/final generated assets remain outside the repository under `/tmp/personal-sticker-pack.Wy77X4`.
+
+### Three-image photoreal style comparison: 2026-08-03
+
+- The owner authorized exactly three additional paid tests using the same two references: received, laughing, and speechless.
+- This is an evaluation-only prompt variant, not a product-default change. It requests a realistic photo cutout, preserves natural facial proportions and skin texture, and explicitly excludes chibi, anime, illustration, 3D, and plastic-skin styles.
+- Mainland native configuration and both normalized references are ready; no credential value was displayed.
+- The first photoreal `received` request was rejected before generation with Alibaba `overdue-payment` access denial. Result is 0/3; laughing and speechless were not called, and no automatic retry occurred. The experiment is paused pending account billing recovery.

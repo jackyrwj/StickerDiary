@@ -120,6 +120,7 @@ Phase 3 — AI generation pipeline
 | ImageMagick `montage` still required a font even with labels removed | 2 | No fonts are registered in this environment; switch to font-free row/column image append operations. |
 | Helper script failed to parse the current simulator scroll element reference | 1 | No gesture ran; request a fresh UI snapshot and use the returned scroll reference directly. |
 | Exported final contact sheet misordered same-second simulator files | 1 | App ordering and assets are correct; seconds-resolution mtimes are not a stable mapping. Rebuild the external sheet using the visually verified reaction-to-file mapping. |
+| First photoreal comparison request was rejected with Alibaba `overdue-payment` access denial | 1 | Zero images were generated and the remaining two calls were not attempted. Do not retry until the owner restores the mainland Alibaba account billing status. |
 
 ## Notes
 
