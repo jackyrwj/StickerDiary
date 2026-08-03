@@ -45,7 +45,7 @@ Phase 3 — AI generation pipeline
 
 - [x] Define the provider-neutral backend contract. (Alibaba Cloud Model Studio is the first provider; iOS only sees the app-owned single-sticker endpoint.)
 - [ ] Implement a secure server-side image-model adapter and generation job lifecycle. (The secure adapter is implemented; persistent jobs, public-service authentication, and recovery remain.)
-- [ ] Benchmark candidate models with a fixed likeness and reaction test set, including base-vs-identity-prompt A/B output and single-vs-multiple-reference comparisons.
+- [ ] Benchmark candidate models with a fixed likeness and reaction test set, including base-vs-identity-prompt A/B output and single-vs-multiple-reference comparisons. (The first two-reference Wan twelve-pack test passed stability and reaction clarity but failed the pack-consistency bar; consistency-strategy and candidate comparisons remain.)
 - [ ] Integrate real generation, partial failure recovery, moderation, cancellation, and retry. (The iOS backend path, normalized errors, and one-image credential test are complete; remaining lifecycle states are pending.)
 - **Status:** pending
 
@@ -54,7 +54,7 @@ Phase 3 — AI generation pipeline
 - [x] Generate the twelve accepted conversational intents in the mock flow.
 - [x] Render exact editable Chinese captions locally.
 - [ ] Build review, delete, caption edit, and single-sticker regeneration flows. (Review, delete, and caption editing are implemented and runtime-verified; single-sticker regeneration remains.)
-- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions. (Vision plus connected-border cleanup is implemented and verified on the first real Wan fixture; a broader light/dark and varied-background set remains.)
+- [ ] Implement and validate automatic background removal, visible-subject cropping, safe padding, transparent-edge quality, file size, visual consistency, and accessibility descriptions. (Vision plus connected-border cleanup passed all 12 outputs from the first full real Wan pack; broader light/dark, varied-background, and accessibility tests remain.)
 - **Status:** pending
 
 ### Phase 5: iOS system Stickers integration
@@ -116,6 +116,10 @@ Phase 3 — AI generation pipeline
 | Combined regression check referenced app entitlements from the `backend` subdirectory | 1 | Backend tests had already passed; rerun only the remaining checks from the repository root with correct paths. |
 | `plutil -extract` treated the dotted App Group entitlement key as a key path | 1 | Use PlistBuddy's quoted dictionary key lookup for the remaining entitlement verification. |
 | Final secret scan matched the README's Chinese API-key placeholder | 1 | The placeholder is not a credential; narrow the tracked-file scan to actual key-shaped values before completing verification. |
+| Raw twelve-image contact sheet could not resolve the requested PingFang font name | 1 | Generation outputs are intact; enumerate ImageMagick-visible fonts and rebuild the local overview without another provider call. |
+| ImageMagick `montage` still required a font even with labels removed | 2 | No fonts are registered in this environment; switch to font-free row/column image append operations. |
+| Helper script failed to parse the current simulator scroll element reference | 1 | No gesture ran; request a fresh UI snapshot and use the returned scroll reference directly. |
+| Exported final contact sheet misordered same-second simulator files | 1 | App ordering and assets are correct; seconds-resolution mtimes are not a stable mapping. Rebuild the external sheet using the visually verified reaction-to-file mapping. |
 
 ## Notes
 

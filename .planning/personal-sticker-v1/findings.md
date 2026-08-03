@@ -52,7 +52,7 @@
 |---|---|
 | One photo may not preserve identity reliably | Accept up to four references and request more when likeness confidence is low. |
 | Stronger identity wording may still produce a generic chibi face | A/B test prompt constraints, but rely on multiple references plus review and single-sticker regeneration rather than repeated prompt-only retries. |
-| Twelve independent generations may drift in style or identity | Create a reusable character anchor and feed it into every reaction generation. |
+| Twelve independent generations may drift in style or identity | Test provider-native character-consistency mode or internal reference chaining without adding a separate user confirmation step. |
 | AI may render broken Chinese text | Generate art without text and render captions locally. |
 | Partial generation failure can waste time and cost | Model each reaction as an independent attempt with resumable job state. |
 | System extension cannot depend on network availability | Copy only approved local sticker files into the shared container. |
@@ -63,6 +63,12 @@
 
 - Apple Vision's iOS 17 foreground-instance mask request returns individual foreground instances. Its observation can create a high-resolution masked image with all unselected pixels transparent and optionally crop to the smallest extent containing the selected instances, which fits the required on-device cleanup pipeline.
 - Vision did not remove the first Wan result's lightly textured off-white background by itself; it effectively preserved the portrait rectangle. A border-connected color cleanup after Vision removed only background regions connected to the image edges and produced a 408 × 408 PNG with all four corners transparent, visible bounds 194 × 312 at +107,+18, and a 105,989-byte base asset.
+- The owner supplied two authorized references for the first full twelve-image test. The close selfie provides strong hair, eye, and round-glasses detail but has wide-angle facial distortion; the beach portrait provides natural proportions, body shape, dark clothing, and a watch. Use both together while instructing the model to take natural facial proportions from the second image and identity details from the first.
+- The full two-reference Wan run succeeded 12/12 without retries in 129.5 seconds total (9.9–12.8 seconds per image). Reaction semantics are generally clear, and round glasses, short dark hair, and dark clothing make the subject recognizable. However, independent generations drift in face shape, hairstyle, apparent age, clothing design, and rendering style; multi-reference prompting improves likeness but does not solve pack consistency.
+- The first final-app viewport confirmed local cleanup and exact captions on the top results: opaque portrait rectangles are gone, characters fit inside consistent transparent sticker canvases, and “收到 / 好的 / 哈哈哈 / 无语” render correctly. The visible cards also make cross-image identity drift more obvious than the raw contact sheet.
+- The middle review viewport confirms “震惊 / 生气 / 委屈 / 不要” remain semantically clear and unclipped. It also reveals a UI duplication: each PNG already contains its local caption while the review card repeats the same caption below the image; the review grid should avoid presenting both at once.
+- The bottom viewport confirms “求求了 / 谢谢 / 在路上 / 晚安” also pass automatic background removal and cropping. All twelve fixed intents are visible and semantically understandable in the final App flow. The dominant remaining quality issue is pack-level identity/style drift, not individual reaction clarity or asset cleanup.
+- The corrected final 4 × 3 sheet confirms the intended order: received, okay, laughing, speechless; shocked, angry, wronged, refuse; please, thanks, on-the-way, good-night. The complete pack is usable as reaction art, but it is not yet production-quality as a coherent personal character pack because facial geometry, age, hairstyle, outfit, and line/shading style drift substantially between calls.
 
 ## Resources
 

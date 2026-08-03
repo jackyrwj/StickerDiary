@@ -131,3 +131,19 @@
 - Verified both generated entitlement files contain the identical App Group. All twelve latest captioned fixture PNGs are transparent at the corner and range from 108,331 to 110,779 bytes. The broad secret scan matched only the README's Chinese placeholder, so the final scan will use a key-shaped pattern.
 - Final tracked-file credential scan passed; ignored `.env` and local Wan output remain excluded. `git diff --check` passed. Current verification is: iOS simulator build/run pass, no-cost twelve-result cleanup flow pass, 12/12 transparent captioned PNG checks pass, backend tests 5/5 pass, App Group entitlements match.
 - Dark-mode review UI renders correctly and the simulator was restored to light appearance. Because review cards intentionally use a white preview surface, final edge-halo judgment on a dark Messages conversation remains part of the broader visual test set rather than being claimed complete here.
+
+### First full twelve-image Wan test: 2026-08-03
+
+- The owner explicitly authorized twelve paid generations using two local reference photos.
+- Both JPEGs are readable and within provider limits. The close selfie is 3456 × 4608 (4,121,767 bytes); the beach portrait is 4096 × 3072 (2,893,403 bytes).
+- Visual review found complementary identity information: use the beach portrait for natural proportions and the selfie for fine facial and glasses details.
+- Mainland native API configuration and `wan2.7-image-pro` are present; no credential value was displayed.
+- All 12 Wan calls succeeded sequentially with no retry. The first raw contact-sheet command failed only because ImageMagick could not resolve the requested PingFang font name; raw outputs and billing scope are unaffected.
+- ImageMagick reported no registered fonts, and its second label-free `montage` attempt still invoked the font module. The next overview uses only thumbnail, padding, and append operations.
+- Built a font-free 4 × 3 raw contact sheet successfully. Provider timing was 129.5 seconds total, with all twelve reactions completed and no retry.
+- Served the twelve saved raw outputs through a no-cost local fixture and opened the App review flow. The first viewport verifies background removal, subject fitting, and exact local captions; it also confirms visible identity/style drift across independent reactions.
+- The middle viewport passed background/crop inspection and exposed duplicated caption presentation in review cards. A helper script then failed to parse the scroll element reference, so no gesture occurred; continue from a fresh UI snapshot.
+- A fresh snapshot and direct scroll reached the bottom viewport. All twelve final reactions are present, unclipped, and background-cleaned; “求求了 / 谢谢 / 在路上 / 晚安” complete the visual review. Remaining work is to quantify final PNG properties and save a complete final contact sheet.
+- All twelve exported PNGs passed 408 × 408 size and transparent-corner checks, ranging from 97,931 to 152,911 bytes. The first external contact sheet paired several filenames incorrectly because simulator writes shared the same second-level timestamp; rebuild it from the verified visual reaction mapping rather than relying on mtime order.
+- Rebuilt and visually verified the corrected final contact sheet at `/tmp/personal-sticker-pack.Wy77X4/final-corrected/final-contact-sheet.png`. Final verdict: reaction clarity and asset processing pass; personal likeness is recognizable but pack-wide identity/style consistency fails the intended production bar. Do not spend another twelve-call batch without changing the consistency strategy.
+- Final regression passed: backend prompt/adapter tests 5/5, tracked credential scan clean, `git diff --check` clean, and repository status contains only the intended prompt, test, plan, and findings updates. Both references and all raw/final generated assets remain outside the repository under `/tmp/personal-sticker-pack.Wy77X4`.

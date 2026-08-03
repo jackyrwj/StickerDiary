@@ -43,6 +43,7 @@ test("builds the Wan 2.7 request and downloads the temporary image", async () =>
   assert.equal(providerRequest.parameters.size, "1K");
   assert.equal(providerRequest.parameters.watermark, false);
   assert.match(providerRequest.input.messages[0].content.at(-1).text, /不要生成任何文字/);
+  assert.match(providerRequest.input.messages[0].content.at(-1).text, /不要变成通用大眼萌脸/);
   assert.equal(result.imageBase64, Buffer.from("fake-png").toString("base64"));
   assert.equal(result.providerRequestId, "request-1");
 });
