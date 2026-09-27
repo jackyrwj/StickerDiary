@@ -1,0 +1,3 @@
+// App target settings. Secrets live in the git-ignored Secrets.xcconfig;
+// without it the app still builds, but AI diaries report a missing API key.
+#include? "Secrets.xcconfig"

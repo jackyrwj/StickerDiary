@@ -3,3 +3,10 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 build/
+
+# Local secrets
+Config/Secrets.xcconfig
+
+# Build artifacts and scratch files
+.asc/
+tmp/

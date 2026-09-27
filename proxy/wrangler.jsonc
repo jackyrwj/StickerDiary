@@ -1,0 +1,21 @@
+{
+  // Thin proxy so the Model Studio key never ships inside the app.
+  // Secrets (set with `npx wrangler secret put <NAME>`):
+  //   DASHSCOPE_API_KEY  – Model Studio key for the region in UPSTREAM_URL
+  //   APP_TOKEN          – shared value the app sends in X-App-Token
+  "name": "sticker-diary-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "vars": {
+    // Singapore (international) region; keys are region-specific.
+    "UPSTREAM_URL": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "ALLOWED_MODELS": "qwen-vl-max,qwen-vl-plus"
+  },
+  "ratelimits": [
+    {
+      "name": "DIARY_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 6, "period": 60 }
+    }
+  ]
+}

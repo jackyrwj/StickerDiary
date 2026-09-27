@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.demo.MilkTeaSticker</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>stickerdiary</string>
+			</array>
+		</dict>
+	</array>
+	<key>DashScopeAPIKey</key>
+	<string>$(DASHSCOPE_API_KEY)</string>
+</dict>
+</plist>

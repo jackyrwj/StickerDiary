@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import WidgetKit
 
 /// Persistence layer for stickers.
 /// Stores sticker images as PNGs and metadata in UserDefaults.
@@ -11,6 +12,12 @@ final class StickerStore {
     private let stickerEntriesKey = "stickerEntries"
     private let stickerOrderKey = "stickerDateOrders"
     private let calendar = Calendar.current
+    /// In-memory copy of the metadata list so hot paths don't re-decode
+    /// UserDefaults JSON on every call. Guarded by `entriesLock` because
+    /// widget sync and preloading read it from background queues.
+    private var cachedEntries: [StickerEntry]?
+    private var cachedOrders: [String: [String]]?
+    private let entriesLock = NSLock()
 
     private var containerURL: URL? {
         fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
@@ -56,17 +63,41 @@ final class StickerStore {
         }
 
         saveEntries(entries)
+        syncToWidget()
         return id
     }
 
     // MARK: - Load
 
     func loadEntries() -> [StickerEntry] {
-        guard let data = UserDefaults.standard.data(forKey: stickerEntriesKey),
-              let entries = try? JSONDecoder().decode([StickerEntry].self, from: data) else {
-            return []
+        entriesLock.lock()
+        defer { entriesLock.unlock() }
+        if let cachedEntries { return cachedEntries }
+        let entries: [StickerEntry]
+        if let data = UserDefaults.standard.data(forKey: stickerEntriesKey),
+           let decoded = try? JSONDecoder().decode([StickerEntry].self, from: data) {
+            entries = decoded
+        } else {
+            entries = []
         }
+        cachedEntries = entries
         return entries
+    }
+
+    /// Metadata for one day in the user-adjusted order, without touching image files.
+    func orderedEntriesForDate(_ date: Date) -> [StickerEntry] {
+        let entries = loadEntries().filter { calendar.isDate($0.date, inSameDayAs: date) }
+        return applySavedOrder(to: entries, for: date)
+    }
+
+    /// Loads only the first sticker image for a day (used for calendar previews).
+    func firstOrderedSticker(for date: Date) -> (entry: StickerEntry, image: UIImage)? {
+        for entry in orderedEntriesForDate(date) {
+            if let image = loadStickerImage(id: entry.id) {
+                return (entry, image)
+            }
+        }
+        return nil
     }
 
     func loadStickerImage(id: String) -> UIImage? {
@@ -78,6 +109,17 @@ final class StickerStore {
               let image = UIImage(data: data) else { return nil }
         imageCache.setObject(image, forKey: key)
         return image
+    }
+
+    /// Returns the image only if it is already in memory (never touches disk).
+    func cachedStickerImage(id: String) -> UIImage? {
+        imageCache.object(forKey: id as NSString)
+    }
+
+    /// Finds the store ID of an in-memory sticker image loaded for `date`.
+    /// Used when a diary paragraph has an image but no recorded ID.
+    func stickerID(matching image: UIImage, on date: Date) -> String? {
+        orderedEntriesForDate(date).first { cachedStickerImage(id: $0.id) === image }?.id
     }
 
     /// Load the most recent N sticker images
@@ -100,13 +142,15 @@ final class StickerStore {
 
     /// Load stickers for a specific date using the user-adjusted order.
     func loadOrderedStickersForDate(_ date: Date) -> [(entry: StickerEntry, image: UIImage)] {
-        let stickers = loadStickersForDate(date)
-        return applySavedOrder(to: stickers, for: date)
+        orderedEntriesForDate(date).compactMap { entry in
+            guard let image = loadStickerImage(id: entry.id) else { return nil }
+            return (entry, image)
+        }
     }
 
     /// Persist the visual order for one date. Unknown/deleted IDs are ignored on read.
     func saveStickerOrder(ids: [String], for date: Date) {
-        let validIDs = Set(loadStickersForDate(date).map(\.entry.id))
+        let validIDs = Set(loadEntries().filter { calendar.isDate($0.date, inSameDayAs: date) }.map(\.id))
         let orderedIDs = ids.filter { validIDs.contains($0) }
         var orders = loadStickerOrders()
         let key = orderKey(for: date)
@@ -134,26 +178,79 @@ final class StickerStore {
         entries.removeAll { $0.id == id }
         saveEntries(entries)
         removeStickerIDFromSavedOrders(id)
+        syncToWidget()
+    }
+
+    // MARK: - Widget Sync
+
+    /// Sync all sticker data to the App Group container for widget access.
+    func syncToWidget() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            let entries = self.loadEntries()
+            let sharedEntries = entries.map {
+                SharedStickerEntry(id: $0.id, title: $0.title, subtitle: $0.subtitle, timestamp: $0.timestamp)
+            }
+            SharedStickerStore.writeEntries(sharedEntries)
+
+            let validIDs = Set(entries.map(\.id))
+            for entry in entries where SharedStickerStore.stickerImageURL(id: entry.id) == nil {
+                if let url = self.stickersDirectory?.appendingPathComponent("\(entry.id).png"),
+                   let data = try? Data(contentsOf: url) {
+                    SharedStickerStore.writeStickerImageData(id: entry.id, data: data)
+                }
+            }
+            SharedStickerStore.removeOrphanedImages(validIDs: validIDs)
+
+            DispatchQueue.main.async {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
+    }
+
+    /// Sync diary snapshots to the App Group container for diary widget.
+    /// Called from the main view whenever diary records change.
+    static func syncDiaryToWidget(records: [(date: Date, text: String, stickerID: String?)]) {
+        DispatchQueue.global(qos: .utility).async {
+            let calendar = Calendar.current
+            let snapshots = records
+                .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .sorted { $0.date > $1.date }
+                .prefix(20)
+                .map { record in
+                    // Take first ~150 chars as preview
+                    let preview = String(record.text.prefix(200))
+                    return SharedDiarySnapshot(
+                        dateTimestamp: calendar.startOfDay(for: record.date).timeIntervalSince1970,
+                        textPreview: preview,
+                        stickerID: record.stickerID
+                    )
+                }
+            SharedStickerStore.writeDiarySnapshots(Array(snapshots))
+            DispatchQueue.main.async {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
     }
 
     // MARK: - Private
 
     private func saveEntries(_ entries: [StickerEntry]) {
+        entriesLock.lock()
+        cachedEntries = entries
+        entriesLock.unlock()
         guard let data = try? JSONEncoder().encode(entries) else { return }
         UserDefaults.standard.set(data, forKey: stickerEntriesKey)
     }
 
-    private func applySavedOrder(
-        to stickers: [(entry: StickerEntry, image: UIImage)],
-        for date: Date
-    ) -> [(entry: StickerEntry, image: UIImage)] {
-        let fallback = chronologicalStickers(stickers)
+    private func applySavedOrder(to entries: [StickerEntry], for date: Date) -> [StickerEntry] {
+        let fallback = chronologicalEntries(entries)
         guard let savedIDs = loadStickerOrders()[orderKey(for: date)], !savedIDs.isEmpty else {
             return fallback
         }
 
-        let byID = Dictionary(uniqueKeysWithValues: fallback.map { ($0.entry.id, $0) })
-        var ordered: [(entry: StickerEntry, image: UIImage)] = []
+        let byID = Dictionary(fallback.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var ordered: [StickerEntry] = []
         var usedIDs = Set<String>()
 
         for id in savedIDs {
@@ -162,33 +259,41 @@ final class StickerStore {
             usedIDs.insert(id)
         }
 
-        ordered.append(contentsOf: fallback.filter { !usedIDs.contains($0.entry.id) })
+        ordered.append(contentsOf: fallback.filter { !usedIDs.contains($0.id) })
         return ordered
     }
 
-    private func chronologicalStickers(
-        _ stickers: [(entry: StickerEntry, image: UIImage)]
-    ) -> [(entry: StickerEntry, image: UIImage)] {
-        stickers
+    private func chronologicalEntries(_ entries: [StickerEntry]) -> [StickerEntry] {
+        entries
             .enumerated()
             .sorted { lhs, rhs in
-                if lhs.element.entry.timestamp == rhs.element.entry.timestamp {
+                if lhs.element.timestamp == rhs.element.timestamp {
                     return lhs.offset > rhs.offset
                 }
-                return lhs.element.entry.timestamp < rhs.element.entry.timestamp
+                return lhs.element.timestamp < rhs.element.timestamp
             }
             .map(\.element)
     }
 
     private func loadStickerOrders() -> [String: [String]] {
-        guard let data = UserDefaults.standard.data(forKey: stickerOrderKey),
-              let orders = try? JSONDecoder().decode([String: [String]].self, from: data) else {
-            return [:]
+        entriesLock.lock()
+        defer { entriesLock.unlock() }
+        if let cachedOrders { return cachedOrders }
+        let orders: [String: [String]]
+        if let data = UserDefaults.standard.data(forKey: stickerOrderKey),
+           let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
+            orders = decoded
+        } else {
+            orders = [:]
         }
+        cachedOrders = orders
         return orders
     }
 
     private func saveStickerOrders(_ orders: [String: [String]]) {
+        entriesLock.lock()
+        cachedOrders = orders
+        entriesLock.unlock()
         guard let data = try? JSONEncoder().encode(orders) else { return }
         UserDefaults.standard.set(data, forKey: stickerOrderKey)
     }

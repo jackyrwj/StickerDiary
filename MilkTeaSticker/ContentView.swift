@@ -5,13 +5,11 @@ enum AppOnboarding {
 }
 
 struct ContentView: View {
-    @AppStorage(AppOnboarding.hasSeenKey) private var hasSeenOnboarding = false
+     @AppStorage(AppOnboarding.hasSeenKey) private var hasSeenOnboarding = false
 
     var body: some View {
         if hasSeenOnboarding {
-            DailyStickerView {
-                hasSeenOnboarding = false
-            }
+            DailyStickerView()
         } else {
             StickerDiaryOnboardingView {
                 hasSeenOnboarding = true

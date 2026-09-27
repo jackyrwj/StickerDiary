@@ -13,7 +13,107 @@
 		AA000004 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA100004 /* LaunchScreen.storyboard */; };
 		BB000001 /* StickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001 /* StickerStore.swift */; };
 		CC000001 /* MilkTeaStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100034 /* MilkTeaStickerView.swift */; };
+		DA000001 /* DiaryInlineMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA100001 /* DiaryInlineMapping.swift */; };
+		DA000002 /* DiaryBookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA100002 /* DiaryBookView.swift */; };
+		DA000003 /* DiaryRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA100003 /* DiaryRecordStore.swift */; };
+		DA000099 /* DiaryCalendarStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA100099 /* DiaryCalendarStrip.swift */; };
+		DB000001 /* AppLocale.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100001 /* AppLocale.swift */; };
+		DB000002 /* AppLocale.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100001 /* AppLocale.swift */; };
+		DB000003 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DB100002 /* Localizable.xcstrings */; };
+		DB000004 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DB100002 /* Localizable.xcstrings */; };
+		DB000005 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DB100003 /* InfoPlist.xcstrings */; };
+		DB000006 /* DiaryFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100004 /* DiaryFont.swift */; };
+		DB000007 /* DiaryFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100004 /* DiaryFont.swift */; };
+		DB000008 /* Fonts/PatrickHand-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100005 /* Fonts/PatrickHand-Regular.ttf */; };
+		DB000009 /* Fonts/PatrickHand-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100005 /* Fonts/PatrickHand-Regular.ttf */; };
+		DB000010 /* ManualDiary.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100006 /* ManualDiary.swift */; };
+		DB000020 /* Fonts/Caveat.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100020 /* Fonts/Caveat.ttf */; };
+		DB000021 /* Fonts/Caveat.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100020 /* Fonts/Caveat.ttf */; };
+		DB000022 /* Fonts/Gaegu-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100021 /* Fonts/Gaegu-Regular.ttf */; };
+		DB000023 /* Fonts/Gaegu-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100021 /* Fonts/Gaegu-Regular.ttf */; };
+		DB000024 /* Fonts/Kalam-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100022 /* Fonts/Kalam-Regular.ttf */; };
+		DB000025 /* Fonts/Kalam-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100022 /* Fonts/Kalam-Regular.ttf */; };
+		DB000026 /* Fonts/IndieFlower-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100023 /* Fonts/IndieFlower-Regular.ttf */; };
+		DB000027 /* Fonts/IndieFlower-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100023 /* Fonts/IndieFlower-Regular.ttf */; };
+		DB000028 /* Fonts/ShadowsIntoLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100024 /* Fonts/ShadowsIntoLight.ttf */; };
+		DB000029 /* Fonts/ShadowsIntoLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100024 /* Fonts/ShadowsIntoLight.ttf */; };
+		DB000030 /* Fonts/Chinese/LXGWWenKaiLite-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100030 /* Fonts/Chinese/LXGWWenKaiLite-Regular.ttf */; };
+		DB000031 /* Fonts/Chinese/Xiaolai-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100031 /* Fonts/Chinese/Xiaolai-Regular.ttf */; };
+		DB000032 /* Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100032 /* Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf */; };
+		DB000033 /* Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100033 /* Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf */; };
+		DB000034 /* Fonts/Chinese/MaShanZheng-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100034 /* Fonts/Chinese/MaShanZheng-Regular.ttf */; };
+		DB000035 /* Fonts/Chinese/LongCang-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100035 /* Fonts/Chinese/LongCang-Regular.ttf */; };
+		DB000036 /* Fonts/Chinese/ZhiMangXing-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB100036 /* Fonts/Chinese/ZhiMangXing-Regular.ttf */; };
+		DB000040 /* PencilSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB100040 /* PencilSound.swift */; };
+		DD000001 /* SharedStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD100001 /* SharedStickerStore.swift */; };
+		DD000002 /* SharedStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD100001 /* SharedStickerStore.swift */; };
+		EE000001 /* StickerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100001 /* StickerWidgetBundle.swift */; };
+		EE000002 /* StickerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100002 /* StickerWidget.swift */; };
+		EE000003 /* SelectStickerIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100003 /* SelectStickerIntent.swift */; };
+		EE000004 /* DiaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100006 /* DiaryWidget.swift */; };
+		EE000010 /* StickerWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = EE200001 /* StickerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EE000020 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EE100020 /* InfoPlist.xcstrings */; };
+		FA000001 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100001 /* ShareViewController.swift */; };
+		FA000002 /* ShareInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100005 /* ShareInbox.swift */; };
+		FA000003 /* ShareInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100005 /* ShareInbox.swift */; };
+		FA000004 /* SharedStickerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD100001 /* SharedStickerStore.swift */; };
+		FA000005 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DB100002 /* Localizable.xcstrings */; };
+		FA000006 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = FA100004 /* InfoPlist.xcstrings */; };
+		FA000010 /* ShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FA200001 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FB000001 /* Sounds/PencilScratch-01.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100001 /* Sounds/PencilScratch-01.wav */; };
+		FB000002 /* Sounds/PencilScratch-02.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100002 /* Sounds/PencilScratch-02.wav */; };
+		FB000003 /* Sounds/PencilScratch-03.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100003 /* Sounds/PencilScratch-03.wav */; };
+		FB000004 /* Sounds/PencilScratch-04.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100004 /* Sounds/PencilScratch-04.wav */; };
+		FB000005 /* Sounds/PencilScratch-05.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100005 /* Sounds/PencilScratch-05.wav */; };
+		FB000006 /* Sounds/PencilScratch-06.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100006 /* Sounds/PencilScratch-06.wav */; };
+		FB000007 /* Sounds/PencilScratch-07.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100007 /* Sounds/PencilScratch-07.wav */; };
+		FB000008 /* Sounds/PencilScratch-08.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100008 /* Sounds/PencilScratch-08.wav */; };
+		FB000009 /* Sounds/PencilScratch-09.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100009 /* Sounds/PencilScratch-09.wav */; };
+		FB000010 /* Sounds/PencilScratch-10.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100010 /* Sounds/PencilScratch-10.wav */; };
+		FB000011 /* Sounds/PencilScratch-11.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100011 /* Sounds/PencilScratch-11.wav */; };
+		FB000012 /* Sounds/PencilScratch-12.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100012 /* Sounds/PencilScratch-12.wav */; };
+		FB000013 /* Sounds/PencilScratch-13.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100013 /* Sounds/PencilScratch-13.wav */; };
+		FB000014 /* Sounds/PencilScratch-14.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100014 /* Sounds/PencilScratch-14.wav */; };
+		FB000015 /* Sounds/PencilScratch-15.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100015 /* Sounds/PencilScratch-15.wav */; };
+		FB000016 /* Sounds/PencilScratch-16.wav in Resources */ = {isa = PBXBuildFile; fileRef = FB100016 /* Sounds/PencilScratch-16.wav */; };
+		FC000001 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC100001 /* WidgetViews.swift */; };
+		FC000002 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC100001 /* WidgetViews.swift */; };
+		FC000003 /* WidgetGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC100002 /* WidgetGuide.swift */; };
+		FF000001 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF100001 /* SubscriptionManager.swift */; };
+		RC100001 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC300001 /* RevenueCat */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		EE300001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA900001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE500001;
+			remoteInfo = StickerWidget;
+		};
+		FA300001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA900001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FA500001;
+			remoteInfo = ShareExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EE400001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EE000010 /* StickerWidget.appex in Embed App Extensions */,
+				FA000010 /* ShareExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AA100001 /* MilkTeaStickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerApp.swift; sourceTree = "<group>"; };
@@ -21,12 +121,87 @@
 		AA100003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA100004 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		AA100034 /* MilkTeaStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilkTeaStickerView.swift; sourceTree = "<group>"; };
-		AA200001 /* 贴纸日记.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "贴纸日记.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA100035 /* MilkTeaSticker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MilkTeaSticker.entitlements; sourceTree = "<group>"; };
+		AA200001 /* MilkTeaSticker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MilkTeaSticker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB100001 /* StickerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerStore.swift; sourceTree = "<group>"; };
+		DA100001 /* DiaryInlineMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryInlineMapping.swift; sourceTree = "<group>"; };
+		DA100002 /* DiaryBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryBookView.swift; sourceTree = "<group>"; };
+		DA100003 /* DiaryRecordStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryRecordStore.swift; sourceTree = "<group>"; };
+		DA100099 /* DiaryCalendarStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryCalendarStrip.swift; sourceTree = "<group>"; };
+		DB100001 /* AppLocale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocale.swift; sourceTree = "<group>"; };
+		DB100002 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		DB100003 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		DB100004 /* DiaryFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryFont.swift; sourceTree = "<group>"; };
+		DB100005 /* Fonts/PatrickHand-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/PatrickHand-Regular.ttf"; sourceTree = "<group>"; };
+		DB100006 /* ManualDiary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualDiary.swift; sourceTree = "<group>"; };
+		DB100020 /* Fonts/Caveat.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/Caveat.ttf; sourceTree = "<group>"; };
+		DB100021 /* Fonts/Gaegu-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Gaegu-Regular.ttf"; sourceTree = "<group>"; };
+		DB100022 /* Fonts/Kalam-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Kalam-Regular.ttf"; sourceTree = "<group>"; };
+		DB100023 /* Fonts/IndieFlower-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/IndieFlower-Regular.ttf"; sourceTree = "<group>"; };
+		DB100024 /* Fonts/ShadowsIntoLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/ShadowsIntoLight.ttf; sourceTree = "<group>"; };
+		DB100030 /* Fonts/Chinese/LXGWWenKaiLite-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/LXGWWenKaiLite-Regular.ttf"; sourceTree = "<group>"; };
+		DB100031 /* Fonts/Chinese/Xiaolai-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/Xiaolai-Regular.ttf"; sourceTree = "<group>"; };
+		DB100032 /* Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf"; sourceTree = "<group>"; };
+		DB100033 /* Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf"; sourceTree = "<group>"; };
+		DB100034 /* Fonts/Chinese/MaShanZheng-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/MaShanZheng-Regular.ttf"; sourceTree = "<group>"; };
+		DB100035 /* Fonts/Chinese/LongCang-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/LongCang-Regular.ttf"; sourceTree = "<group>"; };
+		DB100036 /* Fonts/Chinese/ZhiMangXing-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/Chinese/ZhiMangXing-Regular.ttf"; sourceTree = "<group>"; };
+		DB100040 /* PencilSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilSound.swift; sourceTree = "<group>"; };
+		DB100041 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = App.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
+		DB100042 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DD100001 /* SharedStickerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStickerStore.swift; sourceTree = "<group>"; };
+		EE100001 /* StickerWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerWidgetBundle.swift; sourceTree = "<group>"; };
+		EE100002 /* StickerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickerWidget.swift; sourceTree = "<group>"; };
+		EE100003 /* SelectStickerIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectStickerIntent.swift; sourceTree = "<group>"; };
+		EE100004 /* StickerWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StickerWidget.entitlements; sourceTree = "<group>"; };
+		EE100005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EE100006 /* DiaryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryWidget.swift; sourceTree = "<group>"; };
+		EE100020 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		EE200001 /* StickerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StickerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FA100001 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		FA100002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FA100003 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		FA100004 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		FA100005 /* ShareInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareInbox.swift; sourceTree = "<group>"; };
+		FA200001 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FB100001 /* Sounds/PencilScratch-01.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-01.wav"; sourceTree = "<group>"; };
+		FB100002 /* Sounds/PencilScratch-02.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-02.wav"; sourceTree = "<group>"; };
+		FB100003 /* Sounds/PencilScratch-03.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-03.wav"; sourceTree = "<group>"; };
+		FB100004 /* Sounds/PencilScratch-04.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-04.wav"; sourceTree = "<group>"; };
+		FB100005 /* Sounds/PencilScratch-05.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-05.wav"; sourceTree = "<group>"; };
+		FB100006 /* Sounds/PencilScratch-06.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-06.wav"; sourceTree = "<group>"; };
+		FB100007 /* Sounds/PencilScratch-07.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-07.wav"; sourceTree = "<group>"; };
+		FB100008 /* Sounds/PencilScratch-08.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-08.wav"; sourceTree = "<group>"; };
+		FB100009 /* Sounds/PencilScratch-09.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-09.wav"; sourceTree = "<group>"; };
+		FB100010 /* Sounds/PencilScratch-10.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-10.wav"; sourceTree = "<group>"; };
+		FB100011 /* Sounds/PencilScratch-11.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-11.wav"; sourceTree = "<group>"; };
+		FB100012 /* Sounds/PencilScratch-12.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-12.wav"; sourceTree = "<group>"; };
+		FB100013 /* Sounds/PencilScratch-13.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-13.wav"; sourceTree = "<group>"; };
+		FB100014 /* Sounds/PencilScratch-14.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-14.wav"; sourceTree = "<group>"; };
+		FB100015 /* Sounds/PencilScratch-15.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-15.wav"; sourceTree = "<group>"; };
+		FB100016 /* Sounds/PencilScratch-16.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "Sounds/PencilScratch-16.wav"; sourceTree = "<group>"; };
+		FC100001 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		FC100002 /* WidgetGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetGuide.swift; sourceTree = "<group>"; };
+		FF100001 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA300001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				RC100001 /* RevenueCat in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE300002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA300002 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -40,6 +215,10 @@
 			isa = PBXGroup;
 			children = (
 				AA400002 /* MilkTeaSticker */,
+				DD400001 /* Shared */,
+				EE400002 /* StickerWidget */,
+				FA400002 /* ShareExtension */,
+				DB100041 /* App.xcconfig */,
 				AA400003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,10 +226,37 @@
 		AA400002 /* MilkTeaSticker */ = {
 			isa = PBXGroup;
 			children = (
+				AA100035 /* MilkTeaSticker.entitlements */,
 				AA100001 /* MilkTeaStickerApp.swift */,
 				AA100002 /* ContentView.swift */,
 				AA100034 /* MilkTeaStickerView.swift */,
 				BB100001 /* StickerStore.swift */,
+				DA100001 /* DiaryInlineMapping.swift */,
+				DA100002 /* DiaryBookView.swift */,
+				DA100099 /* DiaryCalendarStrip.swift */,
+				DA100003 /* DiaryRecordStore.swift */,
+				DB100006 /* ManualDiary.swift */,
+				DB100040 /* PencilSound.swift */,
+				FC100002 /* WidgetGuide.swift */,
+				FB100001 /* Sounds/PencilScratch-01.wav */,
+				FB100002 /* Sounds/PencilScratch-02.wav */,
+				FB100003 /* Sounds/PencilScratch-03.wav */,
+				FB100004 /* Sounds/PencilScratch-04.wav */,
+				FB100005 /* Sounds/PencilScratch-05.wav */,
+				FB100006 /* Sounds/PencilScratch-06.wav */,
+				FB100007 /* Sounds/PencilScratch-07.wav */,
+				FB100008 /* Sounds/PencilScratch-08.wav */,
+				FB100009 /* Sounds/PencilScratch-09.wav */,
+				FB100010 /* Sounds/PencilScratch-10.wav */,
+				FB100011 /* Sounds/PencilScratch-11.wav */,
+				FB100012 /* Sounds/PencilScratch-12.wav */,
+				FB100013 /* Sounds/PencilScratch-13.wav */,
+				FB100014 /* Sounds/PencilScratch-14.wav */,
+				FB100015 /* Sounds/PencilScratch-15.wav */,
+				FB100016 /* Sounds/PencilScratch-16.wav */,
+				DB100042 /* Info.plist */,
+				FF100001 /* SubscriptionManager.swift */,
+				DB100003 /* InfoPlist.xcstrings */,
 				AA100004 /* LaunchScreen.storyboard */,
 				AA100003 /* Assets.xcassets */,
 			);
@@ -60,9 +266,62 @@
 		AA400003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AA200001 /* 贴纸日记.app */,
+				AA200001 /* MilkTeaSticker.app */,
+				EE200001 /* StickerWidget.appex */,
+				FA200001 /* ShareExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DD400001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				DD100001 /* SharedStickerStore.swift */,
+				FC100001 /* WidgetViews.swift */,
+				FA100005 /* ShareInbox.swift */,
+				DB100001 /* AppLocale.swift */,
+				DB100002 /* Localizable.xcstrings */,
+				DB100004 /* DiaryFont.swift */,
+				DB100005 /* Fonts/PatrickHand-Regular.ttf */,
+				DB100020 /* Fonts/Caveat.ttf */,
+				DB100021 /* Fonts/Gaegu-Regular.ttf */,
+				DB100022 /* Fonts/Kalam-Regular.ttf */,
+				DB100023 /* Fonts/IndieFlower-Regular.ttf */,
+				DB100024 /* Fonts/ShadowsIntoLight.ttf */,
+				DB100030 /* Fonts/Chinese/LXGWWenKaiLite-Regular.ttf */,
+				DB100031 /* Fonts/Chinese/Xiaolai-Regular.ttf */,
+				DB100032 /* Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf */,
+				DB100033 /* Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf */,
+				DB100034 /* Fonts/Chinese/MaShanZheng-Regular.ttf */,
+				DB100035 /* Fonts/Chinese/LongCang-Regular.ttf */,
+				DB100036 /* Fonts/Chinese/ZhiMangXing-Regular.ttf */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		EE400002 /* StickerWidget */ = {
+			isa = PBXGroup;
+			children = (
+				EE100005 /* Info.plist */,
+				EE100004 /* StickerWidget.entitlements */,
+				EE100001 /* StickerWidgetBundle.swift */,
+				EE100002 /* StickerWidget.swift */,
+				EE100020 /* InfoPlist.xcstrings */,
+				EE100003 /* SelectStickerIntent.swift */,
+				EE100006 /* DiaryWidget.swift */,
+			);
+			path = StickerWidget;
+			sourceTree = "<group>";
+		};
+		FA400002 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				FA100002 /* Info.plist */,
+				FA100003 /* ShareExtension.entitlements */,
+				FA100004 /* InfoPlist.xcstrings */,
+				FA100001 /* ShareViewController.swift */,
+			);
+			path = ShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -75,17 +334,55 @@
 				AA600001 /* Sources */,
 				AA300001 /* Frameworks */,
 				AA600002 /* Resources */,
+				EE400001 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EE300003 /* PBXTargetDependency */,
+				FA300003 /* PBXTargetDependency */,
+			);
+			name = MilkTeaSticker;
+			packageProductDependencies = (
+				RC300001 /* RevenueCat */,
+			);
+			productName = MilkTeaSticker;
+			productReference = AA200001 /* MilkTeaSticker.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EE500001 /* StickerWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EE700001 /* Build configuration list for PBXNativeTarget "StickerWidget" */;
+			buildPhases = (
+				EE600001 /* Sources */,
+				EE300002 /* Frameworks */,
+				EE600002 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = MilkTeaSticker;
-			packageProductDependencies = (
+			name = StickerWidget;
+			productName = StickerWidget;
+			productReference = EE200001 /* StickerWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FA500001 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FA700001 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				FA600001 /* Sources */,
+				FA300002 /* Frameworks */,
+				FA600002 /* Resources */,
 			);
-			productName = MilkTeaSticker;
-			productReference = AA200001 /* 贴纸日记.app */;
-			productType = "com.apple.product-type.application";
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = FA200001 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -100,6 +397,12 @@
 					AA500001 = {
 						CreatedOnToolsVersion = 16.0;
 					};
+					EE500001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					FA500001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 				};
 			};
 			buildConfigurationList = AA700002 /* Build configuration list for PBXProject "MilkTeaSticker" */;
@@ -108,16 +411,20 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = AA400001;
 			packageReferences = (
+				RC200001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			productRefGroup = AA400003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				AA500001 /* MilkTeaSticker */,
+				EE500001 /* StickerWidget */,
+				FA500001 /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -129,6 +436,61 @@
 			files = (
 				AA000003 /* Assets.xcassets in Resources */,
 				AA000004 /* LaunchScreen.storyboard in Resources */,
+				DB000003 /* Localizable.xcstrings in Resources */,
+				DB000005 /* InfoPlist.xcstrings in Resources */,
+				DB000008 /* Fonts/PatrickHand-Regular.ttf in Resources */,
+				FB000001 /* Sounds/PencilScratch-01.wav in Resources */,
+				FB000002 /* Sounds/PencilScratch-02.wav in Resources */,
+				FB000003 /* Sounds/PencilScratch-03.wav in Resources */,
+				FB000004 /* Sounds/PencilScratch-04.wav in Resources */,
+				FB000005 /* Sounds/PencilScratch-05.wav in Resources */,
+				FB000006 /* Sounds/PencilScratch-06.wav in Resources */,
+				FB000007 /* Sounds/PencilScratch-07.wav in Resources */,
+				FB000008 /* Sounds/PencilScratch-08.wav in Resources */,
+				FB000009 /* Sounds/PencilScratch-09.wav in Resources */,
+				FB000010 /* Sounds/PencilScratch-10.wav in Resources */,
+				FB000011 /* Sounds/PencilScratch-11.wav in Resources */,
+				FB000012 /* Sounds/PencilScratch-12.wav in Resources */,
+				FB000013 /* Sounds/PencilScratch-13.wav in Resources */,
+				FB000014 /* Sounds/PencilScratch-14.wav in Resources */,
+				FB000015 /* Sounds/PencilScratch-15.wav in Resources */,
+				FB000016 /* Sounds/PencilScratch-16.wav in Resources */,
+				DB000020 /* Fonts/Caveat.ttf in Resources */,
+				DB000022 /* Fonts/Gaegu-Regular.ttf in Resources */,
+				DB000024 /* Fonts/Kalam-Regular.ttf in Resources */,
+				DB000026 /* Fonts/IndieFlower-Regular.ttf in Resources */,
+				DB000028 /* Fonts/ShadowsIntoLight.ttf in Resources */,
+				DB000030 /* Fonts/Chinese/LXGWWenKaiLite-Regular.ttf in Resources */,
+				DB000031 /* Fonts/Chinese/Xiaolai-Regular.ttf in Resources */,
+				DB000032 /* Fonts/Chinese/ZCOOLKuaiLe-Regular.ttf in Resources */,
+				DB000033 /* Fonts/Chinese/ZCOOLXiaoWei-Regular.ttf in Resources */,
+				DB000034 /* Fonts/Chinese/MaShanZheng-Regular.ttf in Resources */,
+				DB000035 /* Fonts/Chinese/LongCang-Regular.ttf in Resources */,
+				DB000036 /* Fonts/Chinese/ZhiMangXing-Regular.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE600002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB000004 /* Localizable.xcstrings in Resources */,
+				EE000020 /* InfoPlist.xcstrings in Resources */,
+				DB000009 /* Fonts/PatrickHand-Regular.ttf in Resources */,
+				DB000021 /* Fonts/Caveat.ttf in Resources */,
+				DB000023 /* Fonts/Gaegu-Regular.ttf in Resources */,
+				DB000025 /* Fonts/Kalam-Regular.ttf in Resources */,
+				DB000027 /* Fonts/IndieFlower-Regular.ttf in Resources */,
+				DB000029 /* Fonts/ShadowsIntoLight.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA600002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA000005 /* Localizable.xcstrings in Resources */,
+				FA000006 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -142,11 +504,62 @@
 				AA000001 /* MilkTeaStickerApp.swift in Sources */,
 				AA000002 /* ContentView.swift in Sources */,
 				BB000001 /* StickerStore.swift in Sources */,
+				DA000001 /* DiaryInlineMapping.swift in Sources */,
+				DA000002 /* DiaryBookView.swift in Sources */,
+				DA000099 /* DiaryCalendarStrip.swift in Sources */,
+				DA000003 /* DiaryRecordStore.swift in Sources */,
 				CC000001 /* MilkTeaStickerView.swift in Sources */,
+				FF000001 /* SubscriptionManager.swift in Sources */,
+				DD000001 /* SharedStickerStore.swift in Sources */,
+				FA000003 /* ShareInbox.swift in Sources */,
+				DB000001 /* AppLocale.swift in Sources */,
+				DB000006 /* DiaryFont.swift in Sources */,
+				DB000010 /* ManualDiary.swift in Sources */,
+				DB000040 /* PencilSound.swift in Sources */,
+				FC000001 /* WidgetViews.swift in Sources */,
+				FC000003 /* WidgetGuide.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE600001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EE000001 /* StickerWidgetBundle.swift in Sources */,
+				EE000002 /* StickerWidget.swift in Sources */,
+				EE000003 /* SelectStickerIntent.swift in Sources */,
+				EE000004 /* DiaryWidget.swift in Sources */,
+				DD000002 /* SharedStickerStore.swift in Sources */,
+				DB000002 /* AppLocale.swift in Sources */,
+				DB000007 /* DiaryFont.swift in Sources */,
+				FC000002 /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA600001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA000001 /* ShareViewController.swift in Sources */,
+				FA000002 /* ShareInbox.swift in Sources */,
+				FA000004 /* SharedStickerStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EE300003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE500001 /* StickerWidget */;
+			targetProxy = EE300001 /* PBXContainerItemProxy */;
+		};
+		FA300003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FA500001 /* ShareExtension */;
+			targetProxy = FA300001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AA800001 /* Debug */ = {
@@ -203,21 +616,25 @@
 		};
 		AA800003 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = DB100041 /* App.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MilkTeaSticker/MilkTeaSticker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 9G5964XAXT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "贴纸日记";
-				INFOPLIST_KEY_CFBundleName = "贴纸日记";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片，生成贴纸并添加到日记。";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于从相册选择照片，生成贴纸并添加到日记。";
+				INFOPLIST_FILE = MilkTeaSticker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				INFOPLIST_KEY_CFBundleName = "Sticker Diary";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take photos to turn into stickers for your diary.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your diary pages and monthly recaps to Photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose photos from your library to turn into stickers for your diary.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -227,35 +644,39 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
-				PRODUCT_NAME = "贴纸日记";
+				PRODUCT_NAME = MilkTeaSticker;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		AA800004 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = DB100041 /* App.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MilkTeaSticker/MilkTeaSticker.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 9G5964XAXT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "贴纸日记";
-				INFOPLIST_KEY_CFBundleName = "贴纸日记";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄照片，生成贴纸并添加到日记。";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "用于从相册选择照片，生成贴纸并添加到日记。";
+				INFOPLIST_FILE = MilkTeaSticker/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				INFOPLIST_KEY_CFBundleName = "Sticker Diary";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Take photos to turn into stickers for your diary.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your diary pages and monthly recaps to Photos.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose photos from your library to turn into stickers for your diary.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -265,15 +686,133 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker;
-				PRODUCT_NAME = "贴纸日记";
+				PRODUCT_NAME = MilkTeaSticker;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EE800001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = StickerWidget/StickerWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StickerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker.StickerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EE800002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = StickerWidget/StickerWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StickerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker.StickerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FA800001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FA800002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = 9G5964XAXT;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sticker Diary";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.demo.MilkTeaSticker.ShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -298,7 +837,44 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		EE700001 /* Build configuration list for PBXNativeTarget "StickerWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE800001 /* Debug */,
+				EE800002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FA700001 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA800001 /* Debug */,
+				FA800002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		RC200001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.91.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		RC300001 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = RC200001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AA900001 /* Project object */;
 }

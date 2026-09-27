@@ -1,0 +1,150 @@
+{
+  "identifier" : "6D6F3BF6-BCA7-4DD1-8B45-704D69582F6E",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "39.99",
+      "familyShareable" : false,
+      "internalID" : "9A3E1C52-7B4D-4F6A-8E21-5C0D9B7F3A18",
+      "localizations" : [
+        {
+          "description" : "一次购买，永久解锁全部会员功能",
+          "displayName" : "终身会员",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "Unlock all Pro features forever",
+          "displayName" : "Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.demo.MilkTeaSticker.pro.lifetime",
+      "referenceName" : "Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_developerTeamID" : "9G5964XAXT",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "B5720AED-6BC1-4F9B-8206-7370040C08D1",
+      "localizations" : [],
+      "name" : "Sticker Diary Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "F4625FAD-EEE1-43BB-8729-35C252415728",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "按月解锁全部会员功能",
+              "displayName" : "月度会员",
+              "locale" : "zh_CN"
+            },
+            {
+              "description" : "Unlock all Pro features monthly",
+              "displayName" : "Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.demo.MilkTeaSticker.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly",
+          "subscriptionGroupID" : "B5720AED-6BC1-4F9B-8206-7370040C08D1",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "424B58EA-4C29-4439-9A67-5C816DAAEA38",
+          "introductoryOffer" : {
+            "internalID" : "7D0C3B1E-5A2F-4E8B-9C61-2F4A8E7B1D30",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "按年解锁全部会员功能，更划算",
+              "displayName" : "年度会员",
+              "locale" : "zh_CN"
+            },
+            {
+              "description" : "Unlock all Pro features yearly",
+              "displayName" : "Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.demo.MilkTeaSticker.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly",
+          "subscriptionGroupID" : "B5720AED-6BC1-4F9B-8206-7370040C08D1",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
